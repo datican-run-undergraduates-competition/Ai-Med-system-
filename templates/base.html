@@ -18,11 +18,11 @@
     />
 
     <!-- CSS -->
-    <link rel="stylesheet" href="{% static 'chat.css' %}" />
-    <link rel="stylesheet" href="{% static 'chatHistory.css' %}" />
-    <link rel="stylesheet" href="{% static 'dashboard.css' %}" />
-    <link rel="stylesheet" href="{% static 'notifications.css' %}" />
-    <link rel="stylesheet" href="{% static 'settings.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/chat.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/chatHistory.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/notifications.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/settings.css' %}" />
     <link rel="stylesheet" href="{% static 'font-awesome3/css/all.css' %}" />
     <!-- AOS Animation Library -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
@@ -103,7 +103,7 @@
             <img src="{% static 'logo.jpg' %}" alt="User Avatar" />
             {% endif %}
             <div class="user-info">
-              <span class="username">{{ user.username }}</span> 
+              <span class="username">{{ user.username }}</span>
             </div>
           </div>
           <a href="{% url 'logout' %}" class="logout-btn">
@@ -119,11 +119,11 @@
 
     <!-- Scripts -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script src="{% static 'notifications.js' %}"></script>
-    <script src="{% static 'dashboard.js' %}"></script>
-    <script src="{% static 'chat.js' %}"></script>
-    <script src="{% static 'chatHistory.js' %}"></script>
-    <script src="{% static 'main.js' %}"></script>
+    <script src="{% static 'js/notifications.js' %}"></script>
+    <script src="{% static 'js/dashboard.js' %}"></script>
+    <script src="{% static 'js/chat.js' %}"></script>
+    <script src="{% static 'js/chatHistory.js' %}"></script>
+    <script src="{% static 'js/main.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
 
