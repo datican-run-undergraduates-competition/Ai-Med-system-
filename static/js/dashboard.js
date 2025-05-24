@@ -1,61 +1,74 @@
-
 document.addEventListener("DOMContentLoaded", function () {
 
   // Update current date
   const currentDate = new Date();
-  document.getElementById("current-date").textContent =
-    currentDate.toLocaleDateString("en-US", {
+  const dateElement = document.getElementById("current-date");
+  if (dateElement) {
+    dateElement.textContent = currentDate.toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
     });
+  }
 
   // Initialize chart
-  const ctx = document.getElementById("patientsChart").getContext("2d");
-  new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-      datasets: [
-        {
-          label: "Doctors",
-          data: [12, 19, 15, 17, 14, 10, 8],
-          borderColor: "#3b82f6",
-          tension: 0.4,
+  const chartElement = document.getElementById("patientsChart");
+  if (chartElement) {
+    const ctx = chartElement.getContext("2d");
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        datasets: [
+          {
+            label: "Doctors",
+            data: [12, 19, 15, 17, 14, 10, 8],
+            borderColor: "#3b82f6",
+            tension: 0.4,
+          },
+          {
+            label: "Patients",
+            data: [25, 30, 28, 32, 29, 20, 15],
+            borderColor: "#10b981",
+            tension: 0.4,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            display: false,
+          },
         },
-        {
-          label: "Patients",
-          data: [25, 30, 28, 32, 29, 20, 15],
-          borderColor: "#10b981",
-          tension: 0.4,
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          display: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+          },
         },
       },
-      scales: {
-        y: {
-          beginAtZero: true,
-        },
-      },
-    },
-  });
+    });
+  }
 
   // Update stats with random data (for demo)
-  setInterval(() => {
-    document.getElementById("active-doctors").textContent =
-      Math.floor(Math.random() * 20) + 10;
-    document.getElementById("active-patients").textContent =
-      Math.floor(Math.random() * 50) + 30;
-    document.getElementById("ai-usage").textContent =
-      Math.floor(Math.random() * 30) + 70 + "%";
-  }, 5000);
+  const updateStats = () => {
+    const activeDoctors = document.getElementById("active-doctors");
+    const activePatients = document.getElementById("active-patients");
+    const aiUsage = document.getElementById("ai-usage");
+
+    if (activeDoctors) {
+      activeDoctors.textContent = Math.floor(Math.random() * 20) + 10;
+    }
+    if (activePatients) {
+      activePatients.textContent = Math.floor(Math.random() * 50) + 30;
+    }
+    if (aiUsage) {
+      aiUsage.textContent = Math.floor(Math.random() * 30) + 70 + "%";
+    }
+  };
+
+  setInterval(updateStats, 5000);
 });
 
 document.addEventListener('DOMContentLoaded', function () {

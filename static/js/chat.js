@@ -3,222 +3,109 @@
  * Handles message rendering, animations, and API interactions with Gemini
  */
 
+// Global variables
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+let selectedImages = [];
+let chatMessagesContainer;
+let sendButton;
+let userInput;
+let csrftoken;
+let imagePreview;
+
+// Get CSRF token for Django
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     // DOM elements
-    const userInput = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-button');
-    const chatMessagesContainer = document.getElementById('chat-messages-chat');
+    userInput = document.getElementById('user-input');
+    sendButton = document.getElementById('send-button');
+    chatMessagesContainer = document.getElementById('chat-messages-chat');
     const suggestionButtons = document.querySelectorAll('.suggestion-btn');
     const recentChatsContainer = document.getElementById('recent-chats');
+    const attachmentButton = document.getElementById('attachment-button');
+    const imageUpload = document.getElementById('image-upload');
+    imagePreview = document.getElementById('image-preview');
 
-    // Get CSRF token for Django
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
+    // Get CSRF token
+    csrftoken = getCookie('csrftoken');
 
-    const csrftoken = getCookie('csrftoken');
-
-    // Handle sending messages
-    function handleSendMessage() {
-        const message = userInput.value.trim();
-        if (!message) return;
-
-        // Add user message to chat
-        addMessage('user', message);
-
-        // Show loading indicator
-        const loadingId = showLoadingIndicator();
-
-        // Send message to backend
-        fetch('/diagnose/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrftoken
-            },
-            body: JSON.stringify({ symptoms: message })
-        })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok: ' + response.statusText);
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Remove loading indicator
-                removeLoadingIndicator(loadingId);
-
-                if (data.answer) {
-                    // Add AI response to chat
-                    addMessage('ai', formatMessage(data.answer));
-                } else if (data.error) {
-                    addMessage('ai', `⚠️ Error: ${data.error}`);
-                }
-            })
-            .catch(error => {
-                // Remove loading indicator
-                removeLoadingIndicator(loadingId);
-
-                // Show error message
-                addMessage('ai', '⚠️ Sorry, there was an error processing your request. Please try again.');
-                console.error('Error:', error);
-            });
-
-        // Clear input field
-        userInput.value = '';
-    }
-
-    function loadChatHistory() {
-        fetch('/get-chat-history/')
-            .then(response => response.json())
-            .then(data => {
-                if (data.chat_history && data.chat_history.length > 0) {
-                    chatMessagesContainer.innerHTML = ''; // Clear any default welcome message
-
-                    data.chat_history.forEach(chat => {
-                        // Apply formatting to AI messages, leave user messages as is
-                        const content = chat.role === 'ai' ? formatMessage(chat.message) : chat.message;
-                        addMessage(chat.role, content);
-                    });
-
-                    // Scroll to the bottom after loading messages
-                    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
-                }
-            })
-            .catch(error => {
-                console.error('Error loading chat history:', error);
-            });
-    }
-
-    // Format message with markdown-like syntax
-    function formatMessage(text) {
-        if (!text) return '';
-
-        // Convert line breaks to <br>
-        let formatted = text.replace(/\n/g, '<br>');
-
-        // Bold text between double asterisks
-        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-        // Italic text between single asterisks
-        formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-        // Process bullet points (lines starting with - or •)
-        let lines = formatted.split('<br>');
-        let inList = false;
-
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].trim().match(/^[-•] /)) {
-                // If this is the first bullet point, start a list
-                if (!inList) {
-                    lines[i] = '<ul><li>' + lines[i].trim().substring(2) + '</li>';
-                    inList = true;
-                } else {
-                    lines[i] = '<li>' + lines[i].trim().substring(2) + '</li>';
-                }
-
-                // If the next line is not a bullet point or it's the last line, close the list
-                if (i === lines.length - 1 || !lines[i + 1].trim().match(/^[-•] /)) {
-                    lines[i] = lines[i] + '</ul>';
-                    inList = false;
-                }
-            } else if (inList) {
-                // If we're in a list but this line is not a bullet point, close the list
-                lines[i - 1] = lines[i - 1] + '</ul>';
-                inList = false;
-            }
-        }
-
-        formatted = lines.join('<br>');
-
-        // Fix any potentially remaining unclosed lists
-        if (inList) {
-            formatted = formatted + '</ul>';
-        }
-
-        return formatted;
-    }
-
-    // Add message to chat UI
-    function addMessage(sender, content) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = sender === 'user' ? 'user-message' : 'ai-message';
-
-        const avatar = document.createElement('div');
-        avatar.className = sender === 'user' ? 'user-avatar' : 'ai-avatar';
-
-        const icon = document.createElement('i');
-        icon.className = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
-        avatar.appendChild(icon);
-
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        messageContent.innerHTML = content;
-
-        messageDiv.appendChild(avatar);
-        messageDiv.appendChild(messageContent);
-
-        chatMessagesContainer.appendChild(messageDiv);
-
-        // Scroll to bottom
-        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
-    }
-
-    // Show loading indicator
-    function showLoadingIndicator() {
-        const loadingId = 'loading-' + Date.now();
-        const loadingDiv = document.createElement('div');
-        loadingDiv.id = loadingId;
-        loadingDiv.className = 'ai-message';
-        loadingDiv.innerHTML = `
-      <div class="ai-avatar"><i class="fas fa-robot"></i></div>
-      <div class="message-content">
-        <div id="loading-spinner">
-          <div class="typing-indicator">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <span>AI is analyzing your symptoms...</span>
-        </div>
-      </div>
-    `;
-
-        chatMessagesContainer.appendChild(loadingDiv);
-        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
-
-        return loadingId;
-    }
-
-    // Remove loading indicator
-    function removeLoadingIndicator(loadingId) {
-        const loadingElement = document.getElementById(loadingId);
-        if (loadingElement) {
-            loadingElement.remove();
-        }
-    }
-
-    // Event listeners
+    // Setup event listeners
+    console.log('Setting up event listeners');
+    
+    // Send button click handler
     if (sendButton) {
-        sendButton.addEventListener('click', handleSendMessage);
+        sendButton.addEventListener('click', async (e) => {
+            console.log('Send button clicked');
+            const currentText = userInput.value.trim();
+            
+            // If there's text, send the text message
+            if (currentText !== '') {
+                console.log('Sending text message');
+                // Show loading state
+                const sendIcon = sendButton.querySelector('i');
+                sendIcon.className = 'fas fa-spinner fa-spin';
+                sendButton.disabled = true;
+                
+                try {
+                    await sendMessage(currentText);
+                } catch (error) {
+                    console.error('Error:', error);
+                    // Reset button state on error
+                    sendIcon.className = 'fas fa-paper-plane';
+                    sendButton.disabled = false;
+                    addMessage('ai', `⚠️ Error: ${error.message}`);
+                }
+            } else if (!isRecording) {
+                // Only start recording if there's no text and not already recording
+                console.log('Starting recording');
+                await startRecording();
+            } else {
+                console.log('Stopping recording');
+                stopRecording();
+            }
+        });
     }
 
+    // Attachment button click handler
+    if (attachmentButton) {
+        attachmentButton.addEventListener('click', (e) => {
+            console.log('Attachment button clicked');
+            e.preventDefault();
+            imageUpload.click();
+        });
+    }
+    
+    // Image upload handler
+    if (imageUpload) {
+        imageUpload.addEventListener('change', (e) => {
+            console.log('Image upload changed:', e.target.files);
+            handleImageUpload(e);
+        });
+    }
+    
+    // Input change handler for icon switching
     if (userInput) {
+        userInput.addEventListener('input', handleInputChange);
+
         userInput.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                handleSendMessage();
+                sendButton.click();
             }
         });
     }
@@ -228,70 +115,23 @@ document.addEventListener('DOMContentLoaded', function () {
         button.addEventListener('click', function () {
             if (userInput) {
                 userInput.value = this.textContent;
-                handleSendMessage();
+                handleInputChange(); // Update icon immediately
+                sendButton.click();
             }
         });
     });
 
+    // Check media recorder support
+    checkMediaRecorderSupport();
+
     // Initial setup
     loadChatHistory();
-    
 });
-
-
-//For voice note and image upload
-
-
-let mediaRecorder;
-let audioChunks = [];
-let isRecording = false;
-let selectedImages = [];
-
-// DOM Elements
-const userInput = document.getElementById('user-input');
-const sendButton = document.getElementById('send-button');
-const attachmentButton = document.getElementById('attachment-button');
-const imageUpload = document.getElementById('image-upload');
-const imagePreview = document.getElementById('image-preview');
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM Content Loaded');
-    setupEventListeners();
-    checkMediaRecorderSupport();
-});
-
-function setupEventListeners() {
-    console.log('Setting up event listeners');
-    
-    // Send button click handler
-    sendButton.addEventListener('click', (e) => {
-        console.log('Send button clicked');
-        handleSendButtonClick();
-    });
-    
-    // Attachment button click handler
-    attachmentButton.addEventListener('click', (e) => {
-        console.log('Attachment button clicked');
-        e.preventDefault();
-        imageUpload.click();
-    });
-    
-    // Image upload handler
-    imageUpload.addEventListener('change', (e) => {
-        console.log('Image upload changed:', e.target.files);
-        handleImageUpload(e);
-    });
-    
-    // Input change handler for icon switching
-    userInput.addEventListener('input', (e) => {
-        console.log('Input changed:', e.target.value);
-        handleInputChange();
-    });
-}
 
 function handleInputChange() {
     console.log('Handling input change');
+    if (!sendButton || !userInput) return;
+    
     const icon = sendButton.querySelector('i');
     const currentText = userInput.value.trim();
     console.log('Current text:', currentText);
@@ -300,6 +140,12 @@ function handleInputChange() {
         console.log('Changing to send icon');
         icon.className = 'fas fa-paper-plane';
         sendButton.title = 'Send message';
+        // Remove recording class if it exists
+        sendButton.classList.remove('recording');
+        // Stop recording if it's in progress
+        if (isRecording) {
+            stopRecording();
+        }
     } else {
         console.log('Changing to microphone icon');
         icon.className = 'fas fa-microphone';
@@ -311,10 +157,28 @@ async function handleSendButtonClick() {
     console.log('Handling send button click');
     const currentText = userInput.value.trim();
     
+    // If there's text, always send the text message
     if (currentText !== '') {
         console.log('Sending text message');
-        await sendMessage(currentText);
-    } else if (!isRecording) {
+        // Show loading state
+        const sendIcon = sendButton.querySelector('i');
+        sendIcon.className = 'fas fa-spinner fa-spin';
+        sendButton.disabled = true;
+        
+        try {
+            await sendMessage(currentText);
+        } catch (error) {
+            console.error('Error:', error);
+            // Reset button state on error
+            sendIcon.className = 'fas fa-paper-plane';
+            sendButton.disabled = false;
+            alert('Error sending message: ' + error.message);
+        }
+        return; // Exit early after sending text message
+    }
+    
+    // Only handle recording if there's no text
+    if (!isRecording) {
         console.log('Starting recording');
         await startRecording();
     } else {
@@ -418,6 +282,7 @@ function addImagePreview(src, file) {
 }
 
 async function sendMessage(text) {
+    const sendIcon = sendButton.querySelector('i');
     try {
         console.log('Sending message:', text);
         
@@ -427,7 +292,6 @@ async function sendMessage(text) {
         };
 
         // Show loading state
-        const sendIcon = sendButton.querySelector('i');
         sendIcon.className = 'fas fa-spinner fa-spin';
         sendButton.disabled = true;
         
@@ -436,37 +300,48 @@ async function sendMessage(text) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
+                'X-CSRFToken': csrftoken
             },
-            body: JSON.stringify(requestData)  // Make sure to stringify the data
+            body: JSON.stringify(requestData)
         });
         
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Network response was not ok');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Network response was not ok: ${response.statusText}`);
         }
         
         const data = await response.json();
         console.log('Response received:', data);
         
         // Display messages
-        displayMessage(text, 'user', selectedImages);
-        displayMessage(data.answer, 'ai');
+        addMessage('user', text);
+        if (data.answer) {
+            addMessage('ai', formatMessage(data.answer));
+        } else if (data.error) {
+            addMessage('ai', `⚠️ Error: ${data.error}`);
+        }
         
         // Clear input and previews
         userInput.value = '';
-        imagePreview.innerHTML = '';
+        if (imagePreview) {
+            imagePreview.innerHTML = '';
+        }
         selectedImages = [];
-        
-        // Reset button icon
-        handleInputChange();
         
     } catch (error) {
         console.error('Error:', error);
-        alert('Error sending message. Please try again.');
+        addMessage('ai', `⚠️ Error: ${error.message}`);
     } finally {
         // Reset button state
         sendButton.disabled = false;
+        // Reset icon based on input state
+        if (userInput.value.trim() === '') {
+            sendIcon.className = 'fas fa-microphone';
+            sendButton.title = 'Record voice note';
+        } else {
+            sendIcon.className = 'fas fa-paper-plane';
+            sendButton.title = 'Send message';
+        }
     }
 }
 
@@ -583,18 +458,108 @@ function checkMediaRecorderSupport() {
     }
 }
 
-// Add this function to get CSRF token
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+function loadChatHistory() {
+    console.log('Loading chat history...');
+    fetch('/get-chat-history/')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
             }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Chat history data:', data);
+            if (data.chat_history && data.chat_history.length > 0) {
+                // Clear any default welcome message
+                if (chatMessagesContainer) {
+                    chatMessagesContainer.innerHTML = '';
+
+                    data.chat_history.forEach(chat => {
+                        // Apply formatting to AI messages, leave user messages as is
+                        const content = chat.role === 'ai' ? formatMessage(chat.message) : chat.message;
+                        addMessage(chat.role, content);
+                    });
+
+                    // Scroll to the bottom after loading messages
+                    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading chat history:', error);
+        });
+}
+
+// Format message with markdown-like syntax
+function formatMessage(text) {
+    if (!text) return '';
+
+    // Convert line breaks to <br>
+    let formatted = text.replace(/\n/g, '<br>');
+
+    // Bold text between double asterisks
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+    // Italic text between single asterisks
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // Process bullet points (lines starting with - or •)
+    let lines = formatted.split('<br>');
+    let inList = false;
+
+    for (let i = 0; i < lines.length; i++) {
+        if (lines[i].trim().match(/^[-•] /)) {
+            // If this is the first bullet point, start a list
+            if (!inList) {
+                lines[i] = '<ul><li>' + lines[i].trim().substring(2) + '</li>';
+                inList = true;
+            } else {
+                lines[i] = '<li>' + lines[i].trim().substring(2) + '</li>';
+            }
+
+            // If the next line is not a bullet point or it's the last line, close the list
+            if (i === lines.length - 1 || !lines[i + 1].trim().match(/^[-•] /)) {
+                lines[i] = lines[i] + '</ul>';
+                inList = false;
+            }
+        } else if (inList) {
+            // If we're in a list but this line is not a bullet point, close the list
+            lines[i - 1] = lines[i - 1] + '</ul>';
+            inList = false;
         }
     }
-    return cookieValue;
+
+    formatted = lines.join('<br>');
+
+    // Fix any potentially remaining unclosed lists
+    if (inList) {
+        formatted = formatted + '</ul>';
+    }
+
+    return formatted;
+}
+
+// Add message to chat UI
+function addMessage(sender, content) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = sender === 'user' ? 'user-message' : 'ai-message';
+
+    const avatar = document.createElement('div');
+    avatar.className = sender === 'user' ? 'user-avatar' : 'ai-avatar';
+
+    const icon = document.createElement('i');
+    icon.className = sender === 'user' ? 'fas fa-user' : 'fas fa-robot';
+    avatar.appendChild(icon);
+
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    messageContent.innerHTML = content;
+
+    messageDiv.appendChild(avatar);
+    messageDiv.appendChild(messageContent);
+
+    chatMessagesContainer.appendChild(messageDiv);
+
+    // Scroll to bottom
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
 } 

@@ -114,12 +114,15 @@ def diagnose(request):
     """API endpoint to process user symptoms and return medical advice"""
     if request.method == 'POST':
         try:
-            # Voice note handling
-            if 'voice_note' in request.FILES:
+            # Handle JSON data
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+                user_symptoms = data.get('symptoms', '').strip()
+            # Handle form data
+            elif 'voice_note' in request.FILES:
                 voice_note = request.FILES['voice_note']
                 user_symptoms = convert_voice_to_text(voice_note)
             else:
-                # Get text from the form data
                 user_symptoms = request.POST.get('symptoms', '').strip()
 
             if not user_symptoms:
@@ -133,6 +136,8 @@ def diagnose(request):
 
             return JsonResponse({'answer': answer})
         
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data.'}, status=400)
         except Exception as e:
             import traceback
             print("Error in diagnose view:", e)

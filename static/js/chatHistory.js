@@ -41,79 +41,89 @@ document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('chat-search');
     const chatEntries = document.querySelectorAll('.chat-entry');
 
-    searchInput.addEventListener('input', function () {
-        const searchTerm = this.value.toLowerCase();
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            const searchTerm = this.value.toLowerCase();
 
-        chatEntries.forEach(entry => {
-            const title = entry.querySelector('.chat-entry-title').textContent.toLowerCase();
-            const preview = entry.querySelector('.chat-entry-preview').textContent.toLowerCase();
+            chatEntries.forEach(entry => {
+                const title = entry.querySelector('.chat-entry-title')?.textContent.toLowerCase() || '';
+                const preview = entry.querySelector('.chat-entry-preview')?.textContent.toLowerCase() || '';
 
-            if (title.includes(searchTerm) || preview.includes(searchTerm)) {
-                entry.style.display = 'flex';
-            } else {
-                entry.style.display = 'none';
-            }
+                if (title.includes(searchTerm) || preview.includes(searchTerm)) {
+                    entry.style.display = 'flex';
+                } else {
+                    entry.style.display = 'none';
+                }
+            });
         });
-    });
+    }
 
     // Filter functionality
     const dateFilter = document.getElementById('date-filter');
     const topicFilter = document.getElementById('topic-filter');
 
-    function applyFilters() {
-        const dateValue = dateFilter.value;
-        const topicValue = topicFilter.value;
+    if (dateFilter || topicFilter) {
+        function applyFilters() {
+            const dateValue = dateFilter?.value || 'all';
+            const topicValue = topicFilter?.value || 'all';
 
-        // This is just a simple simulation - in a real app you'd have actual data attributes
-        chatEntries.forEach(entry => {
-            let showByDate = true;
-            let showByTopic = true;
+            chatEntries.forEach(entry => {
+                let showByDate = true;
+                let showByTopic = true;
 
-            // Simple date filter simulation
-            const time = entry.querySelector('.chat-entry-time').textContent.toLowerCase();
-            if (dateValue === 'today' && !time.includes('today')) {
-                showByDate = false;
-            } else if (dateValue === 'week' && (!time.includes('today') && !time.includes('yesterday') && !time.includes('apr 7') && !time.includes('apr 5'))) {
-                showByDate = false;
-            }
-
-            // Simple topic filter simulation
-            const title = entry.querySelector('.chat-entry-title').textContent.toLowerCase();
-            if (topicValue !== 'all') {
-                if (topicValue === 'symptoms' && !title.includes('symptom') && !title.includes('cardiac') && !title.includes('fever')) {
-                    showByTopic = false;
-                } else if (topicValue === 'lifestyle' && !title.includes('exercise') && !title.includes('nutrition')) {
-                    showByTopic = false;
-                } else if (topicValue === 'medication' && !title.includes('medication')) {
-                    showByTopic = false;
-                } else if (topicValue === 'conditions' && !title.includes('diabetes')) {
-                    showByTopic = false;
+                // Simple date filter simulation
+                const time = entry.querySelector('.chat-entry-time')?.textContent.toLowerCase() || '';
+                if (dateValue === 'today' && !time.includes('today')) {
+                    showByDate = false;
+                } else if (dateValue === 'week' && (!time.includes('today') && !time.includes('yesterday') && !time.includes('apr 7') && !time.includes('apr 5'))) {
+                    showByDate = false;
                 }
-            }
 
-            entry.style.display = (showByDate && showByTopic) ? 'flex' : 'none';
-        });
+                // Simple topic filter simulation
+                const title = entry.querySelector('.chat-entry-title')?.textContent.toLowerCase() || '';
+                if (topicValue !== 'all') {
+                    if (topicValue === 'symptoms' && !title.includes('symptom') && !title.includes('cardiac') && !title.includes('fever')) {
+                        showByTopic = false;
+                    } else if (topicValue === 'lifestyle' && !title.includes('exercise') && !title.includes('nutrition')) {
+                        showByTopic = false;
+                    } else if (topicValue === 'medication' && !title.includes('medication')) {
+                        showByTopic = false;
+                    } else if (topicValue === 'conditions' && !title.includes('diabetes')) {
+                        showByTopic = false;
+                    }
+                }
+
+                entry.style.display = (showByDate && showByTopic) ? 'flex' : 'none';
+            });
+        }
+
+        if (dateFilter) {
+            dateFilter.addEventListener('change', applyFilters);
+        }
+        if (topicFilter) {
+            topicFilter.addEventListener('change', applyFilters);
+        }
     }
-
-    dateFilter.addEventListener('change', applyFilters);
-    topicFilter.addEventListener('change', applyFilters);
 
     // Continue chat button
     const continueButtons = document.querySelectorAll('.continue-chat-btn');
     continueButtons.forEach(button => {
         button.addEventListener('click', function (e) {
             e.stopPropagation();
-            const chatTitle = this.closest('.chat-entry').querySelector('.chat-entry-title').textContent;
-            // In a real application, you would redirect to the chat with the specific chat ID
-            window.location.href = "{% url 'chat' %}?continue=" + encodeURIComponent(chatTitle);
+            const chatTitle = this.closest('.chat-entry')?.querySelector('.chat-entry-title')?.textContent;
+            if (chatTitle) {
+                window.location.href = `/chat?continue=${encodeURIComponent(chatTitle)}`;
+            }
         });
     });
 
     // Make entire chat entry clickable
     chatEntries.forEach(entry => {
         entry.addEventListener('click', function () {
-            const chatTitle = this.querySelector('.chat-entry-title').textContent;
-            //window.location.href = "{% url 'chat' %}?continue=" + encodeURIComponent(chatTitle);
+            const chatTitle = this.querySelector('.chat-entry-title')?.textContent;
+            if (chatTitle) {
+                window.location.href = `/chat?continue=${encodeURIComponent(chatTitle)}`;
+            }
         });
     });
 
