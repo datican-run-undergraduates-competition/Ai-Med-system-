@@ -98,17 +98,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
-    // Input change handler for icon switching
-    if (userInput) {
-        userInput.addEventListener('input', handleInputChange);
+    // // Input change handler for icon switching
+    // if (userInput) {
+    //     userInput.addEventListener('input', handleInputChange);
 
-        userInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendButton.click();
-            }
-        });
-    }
+    //     userInput.addEventListener('keydown', function (e) {
+    //         if (e.key === 'Enter' && !e.shiftKey) {
+    //             e.preventDefault();
+    //             sendButton.click();
+    //         }
+    //     });
+    // }
 
     // Suggestion button clicks
     suggestionButtons.forEach(button => {
