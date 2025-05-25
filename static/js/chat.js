@@ -586,11 +586,12 @@ function displayVoiceNote(audioUrl, transcribedText = null) {
     const voiceNote = document.createElement('div');
     voiceNote.className = 'voice-note';
     
-    // Create audio player
+    // Create audio player with controls
     const audio = document.createElement('audio');
     audio.controls = true;
     audio.src = audioUrl;
     audio.className = 'voice-note-player';
+    audio.style.display = 'block'; // Ensure audio player is visible
     
     // Add play button
     const playButton = document.createElement('button');
