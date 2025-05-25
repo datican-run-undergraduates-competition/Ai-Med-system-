@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User, auth
-from .models import GeminiChatHistory, Profile
+from .models import GeminiChatHistory, Profile, VoiceNote
 import json
 from django.http import JsonResponse
 from django.conf import settings
@@ -118,15 +118,34 @@ def diagnose(request):
             if request.content_type == 'application/json':
                 data = json.loads(request.body)
                 user_symptoms = data.get('symptoms', '').strip()
+                voice_note = None
             # Handle form data
             elif 'voice_note' in request.FILES:
                 voice_note = request.FILES['voice_note']
-                user_symptoms = convert_voice_to_text(voice_note)
+                if not voice_note.name.endswith('.wav'):
+                    return JsonResponse({'error': 'Only WAV files are supported for voice notes.'}, status=400)
+                try:
+                    user_symptoms = convert_voice_to_text(voice_note)
+                    if not user_symptoms:
+                        return JsonResponse({'error': 'Could not convert voice note to text. Please try again.'}, status=400)
+                except Exception as e:
+                    print(f"Error converting voice note: {str(e)}")
+                    return JsonResponse({'error': 'Error processing voice note. Please try again.'}, status=500)
             else:
                 user_symptoms = request.POST.get('symptoms', '').strip()
+                voice_note = None
 
             if not user_symptoms:
                 return JsonResponse({'error': 'No symptoms provided.'}, status=400)
+
+            # Save voice note if present
+            voice_note_obj = None
+            if voice_note:
+                voice_note_obj = VoiceNote.objects.create(
+                    user=request.user,
+                    audio_file=voice_note,
+                    transcribed_text=user_symptoms
+                )
 
             # Search your custom medical knowledge
             context_texts = search_textbook(user_symptoms)
@@ -134,7 +153,32 @@ def diagnose(request):
             # Ask Gemini (or whatever AI model you're using)
             answer = ask_gemini(user_symptoms, context_texts, request.user)
 
-            return JsonResponse({'answer': answer})
+            # Save chat history
+            chat_history = GeminiChatHistory.objects.create(
+                user=request.user,
+                role='user',
+                message=user_symptoms,
+                voice_note=voice_note_obj
+            )
+
+            # Save AI response
+            GeminiChatHistory.objects.create(
+                user=request.user,
+                role='ai',
+                message=answer
+            )
+
+            response_data = {
+                'answer': answer,
+            }
+            
+            if voice_note_obj:
+                response_data['voice_note'] = {
+                    'url': voice_note_obj.audio_file.url,
+                    'transcribed_text': voice_note_obj.transcribed_text
+                }
+
+            return JsonResponse(response_data)
         
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON data.'}, status=400)
@@ -148,42 +192,88 @@ def diagnose(request):
 
 def convert_voice_to_text(audio_file):
     """Convert uploaded audio file to text, supports long audio by chunking"""
-    with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+    temp_files = []  # Keep track of all temporary files
+    try:
+        print(f"Processing audio file: {audio_file.name}, size: {audio_file.size} bytes")
+        
+        # Create temporary file for the original audio
+        temp_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+        temp_files.append(temp_file.name)
         for chunk in audio_file.chunks():
             temp_file.write(chunk)
         temp_file.flush()
+        temp_file.close()  # Close the file handle
+        print(f"Saved temporary file: {temp_file.name}")
 
-    # Convert to proper WAV if needed
-    audio = AudioSegment.from_file(temp_file.name)
-    wav_path = temp_file.name  # Already in .wav format if uploaded correctly
+        try:
+            # Convert to proper WAV if needed
+            print("Loading audio file with pydub...")
+            audio = AudioSegment.from_file(temp_file.name)
+            print(f"Audio loaded successfully. Duration: {len(audio)/1000} seconds")
+            
+            # Split into 30-second chunks
+            chunk_length_ms = 30 * 1000
+            chunks = make_chunks(audio, chunk_length_ms)
+            print(f"Split audio into {len(chunks)} chunks")
 
-    # Split into 30-second chunks
-    chunk_length_ms = 30 * 1000
-    chunks = make_chunks(audio, chunk_length_ms)
+            recognizer = sr.Recognizer()
+            full_text = ""
 
-    recognizer = sr.Recognizer()
-    full_text = ""
+            for i, chunk in enumerate(chunks):
+                print(f"Processing chunk {i+1}/{len(chunks)}")
+                chunk_file = tempfile.NamedTemporaryFile(suffix=f"_chunk{i}.wav", delete=False)
+                temp_files.append(chunk_file.name)
+                chunk.export(chunk_file.name, format="wav")
+                chunk_file.close()  # Close the file handle
+                print(f"Exported chunk to: {chunk_file.name}")
 
-    for i, chunk in enumerate(chunks):
-        with tempfile.NamedTemporaryFile(suffix=f"_chunk{i}.wav", delete=False) as chunk_file:
-            chunk.export(chunk_file.name, format="wav")
+                try:
+                    with sr.AudioFile(chunk_file.name) as source:
+                        print(f"Reading audio data from chunk {i+1}")
+                        audio_data = recognizer.record(source)
+                        print(f"Sending chunk {i+1} to Google Speech Recognition")
+                        text = recognizer.recognize_google(audio_data)
+                        print(f"Received text for chunk {i+1}: {text}")
+                        full_text += text + " "
+                except sr.UnknownValueError:
+                    print(f"Chunk {i+1}: Could not understand audio")
+                except sr.RequestError as e:
+                    print(f"Chunk {i+1}: API request error - {e}")
+                    raise
+                except Exception as e:
+                    print(f"Chunk {i+1}: Unexpected error - {e}")
+                    raise
 
+            if not full_text.strip():
+                print("No text was recognized from the audio")
+                return None
+                
+            print(f"Final recognized text: {full_text.strip()}")
+            return full_text.strip()
+            
+        except Exception as e:
+            print(f"Error processing audio file: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
+            raise
+            
+    except Exception as e:
+        print(f"Error in convert_voice_to_text: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        raise
+    finally:
+        # Clean up all temporary files
+        import time
+        for file_path in temp_files:
             try:
-                with sr.AudioFile(chunk_file.name) as source:
-                    audio_data = recognizer.record(source)
-                    text = recognizer.recognize_google(audio_data)
-                    full_text += text + " "
-            except sr.UnknownValueError:
-                print(f"Chunk {i+1}: Could not understand audio.")
-            except sr.RequestError as e:
-                print(f"Chunk {i+1}: API request error - {e}")
-            finally:
-                os.unlink(chunk_file.name)
-
-    os.unlink(temp_file.name)
-    return full_text.strip()
-
-
+                # Add a small delay to ensure files are released
+                time.sleep(0.1)
+                if os.path.exists(file_path):
+                    os.unlink(file_path)
+                    print(f"Cleaned up temporary file: {file_path}")
+            except Exception as e:
+                print(f"Warning: Could not delete temporary file {file_path}: {e}")
 
 def get_hospitals_nearby_from_user_location(user):
     city = user.city

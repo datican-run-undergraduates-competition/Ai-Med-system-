@@ -733,3 +733,61 @@ header .subtitle {
     border-radius: 0.5rem;
     object-fit: cover;
 }
+
+.voice-note {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin: 5px 0;
+}
+
+.voice-note-player {
+    flex: 1;
+    height: 30px;
+}
+
+.play-button {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.play-button:hover {
+    background: #0056b3;
+}
+
+.transcribed-text {
+    margin: 5px 0;
+    font-size: 0.9em;
+    color: #666;
+    font-style: italic;
+}
+
+.message-bubble {
+    max-width: 80%;
+    padding: 10px;
+    border-radius: 10px;
+    background: #f0f0f0;
+    margin: 5px 0;
+}
+
+.user-message .message-bubble {
+    background: #007bff;
+    color: white;
+}
+
+.ai-message .message-bubble {
+    background: #f0f0f0;
+    color: #333;
+}

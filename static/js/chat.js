@@ -347,38 +347,190 @@ async function sendMessage(text) {
 
 async function sendVoiceNote(audioBlob) {
     try {
+        console.log('Original audio blob:', {
+            type: audioBlob.type,
+            size: audioBlob.size
+        });
+
+        // Convert audio blob to WAV format if needed
+        const wavBlob = audioBlob.type === 'audio/wav' ? audioBlob : await convertToWav(audioBlob);
+        console.log('Converted WAV blob:', {
+            type: wavBlob.type,
+            size: wavBlob.size
+        });
+        
         const formData = new FormData();
-        formData.append('voice_note', audioBlob, 'voice_note.wav');
+        formData.append('voice_note', wavBlob, 'voice_note.wav');
         
         // Show loading state
         const sendIcon = sendButton.querySelector('i');
         sendIcon.className = 'fas fa-spinner fa-spin';
         sendButton.disabled = true;
         
+        console.log('Sending voice note to server...');
         const response = await fetch('/diagnose/', {
             method: 'POST',
             body: formData
         });
         
+        console.log('Server response status:', response.status);
+        const responseText = await response.text();
+        console.log('Server response text:', responseText);
+        
         if (!response.ok) {
-            throw new Error('Network response was not ok');
+            let errorMessage;
+            try {
+                const errorData = JSON.parse(responseText);
+                errorMessage = errorData.error || 'Network response was not ok';
+            } catch (e) {
+                errorMessage = `Server error: ${response.status} ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
         }
         
-        const data = await response.json();
+        const data = JSON.parse(responseText);
+        console.log('Parsed response data:', data);
         
         // Display voice note in chat
-        displayVoiceNote(audioBlob);
+        if (data.voice_note) {
+            displayVoiceNote(data.voice_note.url, data.voice_note.transcribed_text);
+        } else {
+            displayVoiceNote(URL.createObjectURL(audioBlob));
+        }
+        
         // Display AI response
         displayMessage(data.answer, 'ai');
         
     } catch (error) {
-        console.error('Error:', error);
-        alert('Error sending voice note. Please try again.');
+        console.error('Error in sendVoiceNote:', error);
+        alert(error.message || 'Error sending voice note. Please try again.');
     } finally {
         // Reset button state
         const sendIcon = sendButton.querySelector('i');
         sendIcon.className = 'fas fa-microphone';
         sendButton.disabled = false;
+    }
+}
+
+// Helper function to convert audio blob to WAV format
+async function convertToWav(audioBlob) {
+    console.log('Converting audio to WAV format...');
+    
+    // Create an AudioContext
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    try {
+        // Read the audio blob as an ArrayBuffer
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        console.log('Audio data loaded as ArrayBuffer');
+        
+        // Decode the audio data
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        console.log('Audio data decoded:', {
+            numberOfChannels: audioBuffer.numberOfChannels,
+            length: audioBuffer.length,
+            sampleRate: audioBuffer.sampleRate
+        });
+        
+        // Create a new AudioBuffer for the WAV
+        const wavBuffer = audioContext.createBuffer(
+            audioBuffer.numberOfChannels,
+            audioBuffer.length,
+            audioBuffer.sampleRate
+        );
+        
+        // Copy the audio data
+        for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+            wavBuffer.copyToChannel(audioBuffer.getChannelData(channel), channel);
+        }
+        
+        // Convert to WAV format
+        const wavBlob = await new Promise(resolve => {
+            const wav = audioBufferToWav(wavBuffer);
+            resolve(new Blob([wav], { type: 'audio/wav' }));
+        });
+        
+        console.log('WAV conversion complete:', {
+            type: wavBlob.type,
+            size: wavBlob.size
+        });
+        
+        return wavBlob;
+    } catch (error) {
+        console.error('Error converting audio to WAV:', error);
+        throw new Error('Failed to convert audio to WAV format');
+    } finally {
+        // Close the AudioContext to free up resources
+        audioContext.close();
+    }
+}
+
+// Helper function to convert AudioBuffer to WAV format
+function audioBufferToWav(buffer) {
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const format = 1; // PCM
+    const bitDepth = 16;
+    
+    const bytesPerSample = bitDepth / 8;
+    const blockAlign = numChannels * bytesPerSample;
+    
+    const dataLength = buffer.length * blockAlign;
+    const bufferLength = 44 + dataLength;
+    
+    const arrayBuffer = new ArrayBuffer(bufferLength);
+    const view = new DataView(arrayBuffer);
+    
+    // RIFF identifier
+    writeString(view, 0, 'RIFF');
+    // RIFF chunk length
+    view.setUint32(4, 36 + dataLength, true);
+    // RIFF type
+    writeString(view, 8, 'WAVE');
+    // format chunk identifier
+    writeString(view, 12, 'fmt ');
+    // format chunk length
+    view.setUint32(16, 16, true);
+    // sample format (raw)
+    view.setUint16(20, format, true);
+    // channel count
+    view.setUint16(22, numChannels, true);
+    // sample rate
+    view.setUint32(24, sampleRate, true);
+    // byte rate (sample rate * block align)
+    view.setUint32(28, sampleRate * blockAlign, true);
+    // block align (channel count * bytes per sample)
+    view.setUint16(32, blockAlign, true);
+    // bits per sample
+    view.setUint16(34, bitDepth, true);
+    // data chunk identifier
+    writeString(view, 36, 'data');
+    // data chunk length
+    view.setUint32(40, dataLength, true);
+    
+    // Write the PCM samples
+    const offset = 44;
+    const channelData = [];
+    for (let i = 0; i < numChannels; i++) {
+        channelData.push(buffer.getChannelData(i));
+    }
+    
+    let pos = 0;
+    for (let i = 0; i < buffer.length; i++) {
+        for (let channel = 0; channel < numChannels; channel++) {
+            const sample = Math.max(-1, Math.min(1, channelData[channel][i]));
+            const value = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+            view.setInt16(offset + pos, value, true);
+            pos += 2;
+        }
+    }
+    
+    return arrayBuffer;
+}
+
+function writeString(view, offset, string) {
+    for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
     }
 }
 
@@ -420,7 +572,7 @@ function displayMessage(text, type, images = []) {
     messageDiv.scrollIntoView({ behavior: 'smooth' });
 }
 
-function displayVoiceNote(audioBlob) {
+function displayVoiceNote(audioUrl, transcribedText = null) {
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message user';
     
@@ -433,16 +585,37 @@ function displayVoiceNote(audioBlob) {
     
     const voiceNote = document.createElement('div');
     voiceNote.className = 'voice-note';
-    voiceNote.innerHTML = `
-        <i class="fas fa-play"></i>
-        <span class="duration">Voice Note</span>
-    `;
     
-    voiceNote.onclick = () => {
-        const audio = new Audio(URL.createObjectURL(audioBlob));
-        audio.play();
+    // Create audio player
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.src = audioUrl;
+    audio.className = 'voice-note-player';
+    
+    // Add play button
+    const playButton = document.createElement('button');
+    playButton.className = 'play-button';
+    playButton.innerHTML = '<i class="fas fa-play"></i>';
+    playButton.onclick = () => {
+        if (audio.paused) {
+            audio.play();
+            playButton.innerHTML = '<i class="fas fa-pause"></i>';
+        } else {
+            audio.pause();
+            playButton.innerHTML = '<i class="fas fa-play"></i>';
+        }
     };
     
+    // Add transcribed text if available
+    if (transcribedText) {
+        const textElement = document.createElement('p');
+        textElement.className = 'transcribed-text';
+        textElement.textContent = transcribedText;
+        bubble.appendChild(textElement);
+    }
+    
+    voiceNote.appendChild(playButton);
+    voiceNote.appendChild(audio);
     bubble.appendChild(voiceNote);
     messageDiv.appendChild(avatar);
     messageDiv.appendChild(bubble);

@@ -3,12 +3,22 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+class VoiceNote(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    audio_file = models.FileField(upload_to='voice_notes/')
+    transcribed_text = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username}'s voice note - {self.timestamp}"
+
 # To get chat history of logged in user 
 class GeminiChatHistory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     role = models.CharField(max_length=10)
     message = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
+    voice_note = models.ForeignKey(VoiceNote, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.role}: {self.message[:30]}"
