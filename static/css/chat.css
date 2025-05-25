@@ -243,7 +243,7 @@ header .subtitle {
     flex: 1;
     border: 1px solid var(--chat-border);
     border-radius: 1.5rem;
-    padding: 1.25rem 1.5rem;
+    padding: 1.25rem 4rem 1.25rem 1.5rem;
     font-size: 1rem;
     background: var(--chat-card-bg);
     color: var(--chat-text);
@@ -258,7 +258,42 @@ header .subtitle {
     box-sizing: border-box;
 }
 
-.attachment-button,
+.attachment-button {
+    position: absolute;
+    right: 5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: var(--chat-primary);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+    padding: 0;
+    z-index: 2;
+}
+
+.attachment-button:hover {
+    background: rgba(37, 99, 235, 0.1);
+    transform: translateY(-50%) scale(1.05);
+}
+
+.attachment-button:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.attachment-button i {
+    font-size: 1.2rem;
+    width: auto;
+    height: auto;
+}
+
 .send-button {
     background: var(--chat-primary);
     border: none;
@@ -277,18 +312,15 @@ header .subtitle {
     z-index: 1;
 }
 
-.attachment-button:hover,
 .send-button:hover {
     background: var(--chat-secondary);
     transform: scale(1.05);
 }
 
-.attachment-button:active,
 .send-button:active {
     transform: scale(0.95);
 }
 
-.attachment-button i,
 .send-button i {
     font-size: 1.4rem;
     width: auto;
@@ -581,18 +613,26 @@ header .subtitle {
     }
 
     #user-input {
-        padding: 0.5rem 1rem;
+        padding: 0.5rem 3.5rem 0.5rem 1rem;
         min-height: 45px;
         font-size: 0.9rem;
     }
 
-    .attachment-button,
+    .attachment-button {
+        right: 4rem;
+        width: 35px;
+        height: 35px;
+    }
+
+    .attachment-button i {
+        font-size: 1.1rem;
+    }
+
     .send-button {
         width: 40px;
         height: 40px;
     }
 
-    .attachment-button i,
     .send-button i {
         font-size: 1.1rem;
     }
