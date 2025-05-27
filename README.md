@@ -147,7 +147,7 @@ This makes it a **powerful showcase** of AI's role in **next-generation healthca
 
 ---
 ## 🧑‍💻 Team
-- Olokor Samuel Oroghene – Backend & Frontend Developer, Project Coordinator
+- Olokor Samuel Oroghene –Frontend & Backend developer 
 
 - Emmanuel Oluyemi– Backend and ML Engineer
 
