@@ -11,7 +11,7 @@ This project demonstrates how AI can enhance decision-making in medicine, reduce
 ## 🚀 Key Features
 
 ### 🔐 Secure Authentication  
-- JWT-based login system with session management  
+- Oauth login system with session management  
 - “Forgot Password?” reset functionality  
 - Clean, modern UI with a medical + futuristic aesthetic
 
@@ -50,11 +50,15 @@ This project demonstrates how AI can enhance decision-making in medicine, reduce
 
 | Layer        | Tools & Technologies                         |
 |--------------|----------------------------------------------|
-| Frontend     | HTML, CSS, Bootstrap, JavaScript             |
-| Backend      | Python (Flask), Flask Extensions             |
+| Frontend     | HTML, CSS, JavaScript             |
+| Backend      | Python (Django), 
+             |
 | AI/ML Model  | Scikit-learn, Pandas, Gemini  |
+
 | Database     | SQLite (development) → PostgreSQL/MySQL      |
-| Auth & Security | JWT, Flask-Login       
+
+| Auth & Security | Oauth 
+       
 | Tools        | Postman, cURL, Git, VS Code                  |
 
 ---
