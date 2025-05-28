@@ -98,17 +98,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     
-    // // Input change handler for icon switching
-    // if (userInput) {
-    //     userInput.addEventListener('input', handleInputChange);
+    // Input change handler for icon switching
+    if (userInput) {
+        userInput.addEventListener('input', handleInputChange);
 
-    //     userInput.addEventListener('keydown', function (e) {
-    //         if (e.key === 'Enter' && !e.shiftKey) {
-    //             e.preventDefault();
-    //             sendButton.click();
-    //         }
-    //     });
-    // }
+        // userInput.addEventListener('keydown', function (e) {
+        //     if (e.key === 'Enter' && !e.shiftKey) {
+        //         e.preventDefault();
+        //         sendButton.click();
+        //     }
+        // });
+    }
 
     // Suggestion button clicks
     suggestionButtons.forEach(button => {
@@ -132,7 +132,7 @@ function handleInputChange() {
     console.log('Handling input change');
     if (!sendButton || !userInput) return;
     
-    const icon = sendButton.querySelector('i');
+    const icon = sendButton.querySelector('i')
     const currentText = userInput.value.trim();
     console.log('Current text:', currentText);
     
@@ -286,7 +286,7 @@ async function sendMessage(text) {
     try {
         console.log('Sending message:', text);
         
-        // Create the request data in the format your view expects
+        // Create the request data for views.py
         const requestData = {
             symptoms: text
         };

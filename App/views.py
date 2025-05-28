@@ -76,6 +76,7 @@ def index(request):
 
 @login_required(login_url='login')
 def dashboard(request):
+    
     return render(request, 'dashboard.html')
 
 @login_required(login_url='login')
@@ -191,7 +192,7 @@ def diagnose(request):
     return JsonResponse({'error': 'Only POST requests are accepted.'}, status=405)
 
 def convert_voice_to_text(audio_file):
-    """Convert uploaded audio file to text, supports long audio by chunking"""
+    """Convert uploaded audio file to text"""
     temp_files = []  # Keep track of all temporary files
     try:
         print(f"Processing audio file: {audio_file.name}, size: {audio_file.size} bytes")
