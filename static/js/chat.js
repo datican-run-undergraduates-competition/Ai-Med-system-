@@ -668,8 +668,11 @@ function loadChatHistory() {
 function formatMessage(text) {
     if (!text) return '';
 
+    // First, preserve emojis by wrapping them in spans
+    let formatted = text.replace(/([\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F000}-\u{1F02F}]|[\u{1F0A0}-\u{1F0FF}]|[\u{1F100}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{1F200}-\u{1F2FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1F77F}]|[\u{1F780}-\u{1F7FF}]|[\u{1F800}-\u{1F8FF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA00}-\u{1FA6F}]|[\u{1FA70}-\u{1FAFF}]|[\u{1FAB0}-\u{1FABF}]|[\u{1FAC0}-\u{1FAFF}]|[\u{1FAD0}-\u{1FAFF}]|[\u{1FAE0}-\u{1FAFF}]|[\u{1FAF0}-\u{1FAFF}]|[\u{1FB00}-\u{1FBFF}]|[\u{1FC00}-\u{1FCFF}]|[\u{1FD00}-\u{1FDFF}]|[\u{1FE00}-\u{1FEFF}]|[\u{1FF00}-\u{1FFFF}]|[\u{20000}-\u{2A6DF}]|[\u{2A700}-\u{2B73F}]|[\u{2B740}-\u{2B81F}]|[\u{2B820}-\u{2CEAF}]|[\u{2CEB0}-\u{2EBEF}]|[\u{2F800}-\u{2FA1F}]|[\u{2FA20}-\u{2FAFF}]|[\u{2FB00}-\u{2FBFF}]|[\u{2FC00}-\u{2FCFF}]|[\u{2FD00}-\u{2FDFF}]|[\u{2FE00}-\u{2FEFF}]|[\u{2FF00}-\u{2FFFF}]|[\u{30000}-\u{3FFFD}]|[\u{40000}-\u{4FFFD}]|[\u{50000}-\u{5FFFD}]|[\u{60000}-\u{6FFFD}]|[\u{70000}-\u{7FFFD}]|[\u{80000}-\u{8FFFD}]|[\u{90000}-\u{9FFFD}]|[\u{A0000}-\u{AFFFD}]|[\u{B0000}-\u{BFFFD}]|[\u{C0000}-\u{CFFFD}]|[\u{D0000}-\u{DFFFD}]|[\u{E0000}-\u{EFFFD}]|[\u{F0000}-\u{FFFFD}]|[\u{100000}-\u{10FFFD}])/gu, '<span class="emoji">$1</span>');
+
     // Convert line breaks to <br>
-    let formatted = text.replace(/\n/g, '<br>');
+    formatted = formatted.replace(/\n/g, '<br>');
 
     // Bold text between double asterisks
     formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');

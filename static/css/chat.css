@@ -106,97 +106,70 @@ header .subtitle {
 }
 
 .message-content {
-    background: var(--ai-message-bg);
-    padding: 1.25rem;
-    border-radius: 1rem;
-    border-top-left-radius: 0;
-    color: var(--chat-text);
-    box-shadow: 0 2px 5px var(--chat-shadow);
-    animation: pulseGlow 2s infinite alternate;
-    word-spacing: 4px;
-    letter-spacing: 1px;
+    font-size: 1em;
     line-height: 1.5;
+    word-wrap: break-word;
+    color: var(--chat-text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-.message-content p {
-    margin-bottom: 1rem;
-    line-height: 1.6;
+.message-content strong {
+    font-weight: bold;
+    color: var(--chat-text);
 }
 
-.message-content p:last-child {
-    margin-bottom: 0;
+.message-content em {
+    font-style: italic;
+    color: var(--chat-text);
 }
 
-.suggestion-text {
-    font-size: 0.9rem;
-    margin-bottom: 0.75rem;
-    color: var(--chat-light-text);
+.message-content ul {
+    list-style-type: none;
+    padding-left: 1em;
+    margin: 0.5em 0;
 }
 
-.suggestions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+.message-content li {
+    margin: 0.3em 0;
+    position: relative;
+    color: var(--chat-text);
 }
 
-.suggestion-btn {
-    background: var(--chat-card-bg);
-    border: 1px solid var(--chat-primary);
+.message-content li:before {
+    content: "•";
     color: var(--chat-primary);
-    padding: 0.5rem 1rem;
-    border-radius: 2rem;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    animation: fadeIn 0.5s ease-out forwards;
-    animation-delay: calc(var(--index, 0) * 0.1s);
+    font-weight: bold;
+    position: absolute;
+    left: -1em;
 }
 
-.suggestion-btn:hover {
-    background: var(--chat-primary);
-    color: white;
-    transform: translateY(-2px);
+.emoji {
+    display: inline-block;
+    font-size: 1.2em;
+    line-height: 1;
+    vertical-align: middle;
+    margin: 0 2px;
+    color: inherit;
+    font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Apple Color Emoji", "Noto Color Emoji", "Android Emoji", "EmojiOne Color", "EmojiOne", "Twemoji Mozilla", "Noto Emoji", sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-/* Message bubbles */
-.message {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    animation: fadeInUp 0.3s ease-out forwards;
+/* Ensure emojis in headers are properly sized */
+.message-content strong .emoji {
+    font-size: 1.3em;
 }
 
-.message.ai {
-    align-self: flex-start;
-    max-width: 80%;
+/* Style for bullet points with emojis */
+.message-content li .emoji {
+    margin-right: 0.3em;
 }
 
-.message.user {
-    flex-direction: row-reverse;
-    align-self: flex-end;
-    max-width: 80%;
-}
-
-.user-avatar {
-    width: 40px;
-    height: 40px;
-    min-width: 40px;
-    border-radius: 50%;
-    background: var(--chat-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1rem;
-}
-
-.message-bubble {
-    padding: 1rem;
-    border-radius: 1rem;
-    max-width: 100%;
-    box-shadow: 0 2px 5px var(--chat-shadow);
-}
-
+/* Message bubble specific styles */
 .message.ai .message-bubble {
     background: var(--ai-message-bg);
     border-top-left-radius: 0;
@@ -206,7 +179,15 @@ header .subtitle {
 .message.user .message-bubble {
     background: var(--user-message-bg);
     border-top-right-radius: 0;
-    color: white;
+    color: var(--chat-text);
+}
+
+/* Ensure text color in user messages is readable */
+.message.user .message-content,
+.message.user .message-content strong,
+.message.user .message-content em,
+.message.user .message-content li {
+    color: var(--chat-text);
 }
 
 .message-time {
