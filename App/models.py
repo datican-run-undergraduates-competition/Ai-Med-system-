@@ -89,3 +89,17 @@ class Profile(models.Model):
     
     def __str__(self):
         return str(self.user)
+
+class MedicationRecommendation(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    medication_name = models.CharField(max_length=100)
+    dosage = models.CharField(max_length=100)
+    frequency = models.CharField(max_length=100)
+    duration = models.CharField(max_length=100)
+    warnings = models.TextField()
+    contraindications = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    chat_history = models.ForeignKey(GeminiChatHistory, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.medication_name} for {self.user.username} - {self.timestamp}"

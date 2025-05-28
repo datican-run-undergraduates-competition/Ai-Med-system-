@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User, auth
-from .models import GeminiChatHistory, Profile, VoiceNote
+from .models import GeminiChatHistory, Profile, VoiceNote, MedicationRecommendation
 import json
 from django.http import JsonResponse
 from django.conf import settings
@@ -163,11 +163,42 @@ def diagnose(request):
             )
 
             # Save AI response
-            GeminiChatHistory.objects.create(
+            ai_response = GeminiChatHistory.objects.create(
                 user=request.user,
                 role='ai',
                 message=answer
             )
+
+            # Extract and save medication recommendations if present
+            if "Recommended Medication" in answer:
+                try:
+                    # Split the answer to get the medication section
+                    med_section = answer.split("Recommended Medication")[1].split("\n\n")[0]
+                    
+                    # Extract medication details
+                    lines = med_section.split("\n")
+                    medication_name = lines[0].strip()
+                    
+                    # Extract dosage if present
+                    dosage = ""
+                    for line in lines:
+                        if "Dosage:" in line:
+                            dosage = line.split("Dosage:")[1].strip()
+                            break
+                    
+                    # Create medication recommendation
+                    MedicationRecommendation.objects.create(
+                        user=request.user,
+                        medication_name=medication_name,
+                        dosage=dosage,
+                        frequency="",  # You might want to add more sophisticated parsing
+                        duration="",   # You might want to add more sophisticated parsing
+                        warnings="",   # You might want to add more sophisticated parsing
+                        contraindications="",  # You might want to add more sophisticated parsing
+                        chat_history=ai_response
+                    )
+                except Exception as e:
+                    print(f"Error saving medication recommendation: {str(e)}")
 
             response_data = {
                 'answer': answer,
