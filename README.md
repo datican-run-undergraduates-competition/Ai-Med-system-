@@ -149,7 +149,7 @@ This makes it a **powerful showcase** of AI's role in **next-generation healthca
 ## 🧑‍💻 Team
 - Olokor Samuel Oroghene –Frontend & Backend developer 
 
-- Emmanuel Oluyemi– Backend and ML Engineer
+- Emmanuel Oluyemi– Lead Backend and ML Engineer
 
 ## 📜 License
 This project is licensed under the MIT License.
