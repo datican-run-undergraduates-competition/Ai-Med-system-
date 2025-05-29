@@ -13,8 +13,7 @@ initial_instruction = """You are Dr. Nova and you were created by a tean of tech
 
 Response Style:
 - Start every response with a friendly greeting and emoji (e.g., "Hi there! 👋" or "Hello! 🌟")
-- Use emojis frequently throughout your responses to make them more engaging
-- Break up text with relevant emojis to make it more readable
+- Use emojis frequently throughout your responses to make them more engaging 
 - Use bullet points with emojis for lists (e.g., "• 🥗 Eat a balanced diet")
 - Keep responses conversational and easy to understand
 - Avoid explicitly stating personal information from the user's profile
@@ -24,7 +23,7 @@ Formatting Rules:
 - Use bold headers with emojis for main sections
 - Add line breaks between sections
 - Keep paragraphs short and easy to read
-- Use bullet points for lists
+- Use bullet points for lists 
 - Include relevant emojis for each topic
 
 Prescription Format:
@@ -70,41 +69,46 @@ def ask_gemini(user_symptoms, context_texts, user):
     """
    
     try: 
-        # Get user's profile information
-        profile = user.profile
+        # Initialize medical profile as empty
+        medical_profile = ""
         
-        # Create a medical profile summary
-        medical_profile = f"""
-        Patient Medical Profile:
-        - Age: {profile.age}
-        - Gender: {profile.gender}
-        - Pregnancy Status: {'Pregnant' if profile.is_pregnant else 'Not Pregnant'}
-        - Known Allergies: {profile.known_allergies or 'None reported'}
-        - Current Medications: {profile.current_medications or 'None reported'}
-        - Chronic Conditions: {profile.chronic_conditions or 'None reported'}
-        - Family History: {profile.family_history or 'None reported'}
-        - Smoking Status: {profile.smoking_status or 'Not specified'}
-        - Alcohol Use: {profile.alcohol_use or 'Not specified'}
-        - Physical Activity Level: {profile.physical_activity or 'Not specified'}
-        """
+        # Get user's profile information if available
+        if user and hasattr(user, 'profile'):
+            profile = user.profile
+            # Create a medical profile summary
+            medical_profile = f"""
+            Patient Medical Profile:
+            - Age: {profile.age}
+            - Gender: {profile.gender}
+            - Pregnancy Status: {'Pregnant' if profile.is_pregnant else 'Not Pregnant'}
+            - Known Allergies: {profile.known_allergies or 'None reported'}
+            - Current Medications: {profile.current_medications or 'None reported'}
+            - Chronic Conditions: {profile.chronic_conditions or 'None reported'}
+            - Family History: {profile.family_history or 'None reported'}
+            - Smoking Status: {profile.smoking_status or 'Not specified'}
+            - Alcohol Use: {profile.alcohol_use or 'Not specified'}
+            - Physical Activity Level: {profile.physical_activity or 'Not specified'}
+            """
 
         # Get chat history
-        chat_history = GeminiChatHistory.objects.filter(user=user).order_by('timestamp')
+        chat_history = GeminiChatHistory.objects.filter(user=user).order_by('timestamp') if user else []
         history = [{"role": "model" if m.role == "ai" else m.role, "parts": [m.message]} for m in chat_history]
          
         chat = model.start_chat(history=history)
         
-        # Save user message
-        GeminiChatHistory.objects.create(user=user, role="user", message=user_symptoms)
+        # Save user message if user is provided
+        if user:
+            GeminiChatHistory.objects.create(user=user, role="user", message=user_symptoms)
         
         # Always include initial_instruction and medical profile
         context = "\n\n---\n\n".join(context_texts) if context_texts else "No additional medical context provided."
-        full_prompt = f"{initial_instruction}\n\nPatient Medical Profile:\n{medical_profile}\n\nTextbook Information:\n{context}\n\nUser Question: {user_symptoms}"
+        full_prompt = f"{initial_instruction}\n\n{medical_profile}\n\nTextbook Information:\n{context}\n\nUser Question: {user_symptoms}"
         
         response = chat.send_message(full_prompt)
         
-        # Save AI response with 'ai' role
-        GeminiChatHistory.objects.create(user=user, role="ai", message=response.text)
+        # Save AI response with 'ai' role if user is provided
+        if user:
+            GeminiChatHistory.objects.create(user=user, role="ai", message=response.text)
         
         return response.text
     

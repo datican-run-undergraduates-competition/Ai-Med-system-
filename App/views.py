@@ -151,10 +151,10 @@ def diagnose(request):
             # Search your custom medical knowledge
             context_texts = search_textbook(user_symptoms)
 
-            # Ask Gemini (or whatever AI model you're using)
-            answer = ask_gemini(user_symptoms, context_texts, request.user)
+            # Ask Gemini without profile information
+            answer = ask_gemini(user_symptoms, context_texts, None)  # Pass None instead of request.user
 
-            # Save chat history
+            # Save chat history - only create one pair of entries
             chat_history = GeminiChatHistory.objects.create(
                 user=request.user,
                 role='user',
