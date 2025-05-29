@@ -146,6 +146,37 @@ header .subtitle {
     left: -1em;
 }
 
+.suggestion-text {
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+    color: var(--chat-light-text);
+}
+
+.suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.suggestion-btn {
+    background: var(--chat-card-bg);
+    border: 1px solid var(--chat-primary);
+    color: var(--chat-primary);
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: fadeIn 0.5s ease-out forwards;
+    animation-delay: calc(var(--index, 0) * 0.1s);
+}
+
+.suggestion-btn:hover {
+    background: var(--chat-primary);
+    color: white;
+    transform: translateY(-2px);
+}
+
 .emoji {
     display: inline-block;
     font-size: 1.2em;
