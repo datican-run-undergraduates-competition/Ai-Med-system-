@@ -382,6 +382,9 @@ async function sendVoiceNote(audioBlob) {
 
 async function sendMessage(text) {
     const sendIcon = sendButton.querySelector('i');
+    const maxRetries = 3;
+    let retryCount = 0;
+
     try {
         console.log('Sending message:', text);
         
@@ -391,6 +394,7 @@ async function sendMessage(text) {
         
         // Add images if present
         if (selectedImages.length > 0) {
+            console.log(`Sending message with ${selectedImages.length} images`);
             for (const file of selectedImages) {
                 // Validate file type
                 if (!file.type.startsWith('image/')) {
@@ -408,25 +412,41 @@ async function sendMessage(text) {
         sendIcon.className = 'fas fa-spinner fa-spin';
         sendButton.disabled = true;
         
-        // Send to backend using the new endpoint
-        const response = await fetch('/process-text-message/', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrftoken
-            },
-            body: formData
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Network response was not ok: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
+        // Function to attempt sending the message
+        const attemptSend = async () => {
+            try {
+                const response = await fetch('/process-text-message/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `Network response was not ok: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                if (error.message.includes('504') && retryCount < maxRetries) {
+                    retryCount++;
+                    console.log(`Retry attempt ${retryCount} of ${maxRetries}`);
+                    showToast(`Connection timeout. Retrying... (${retryCount}/${maxRetries})`, 'warning');
+                    // Wait for 2 seconds before retrying
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    return attemptSend();
+                }
+                throw error;
+            }
+        };
+
+        const data = await attemptSend();
         console.log('Response received:', data);
         
         // Display messages
-        addMessage('user', text, selectedImages);
+        addMessage('user', text, data.images || []);
         if (data.answer) {
             addMessage('ai', formatMessage(data.answer));
         } else if (data.error) {
@@ -447,7 +467,17 @@ async function sendMessage(text) {
         
     } catch (error) {
         console.error('Error:', error);
-        addMessage('ai', `⚠️ Error: ${error.message}`);
+        let errorMessage = error.message;
+        
+        // Provide more user-friendly error messages
+        if (error.message.includes('504')) {
+            errorMessage = 'The server took too long to respond. Please check your internet connection and try again.';
+        } else if (error.message.includes('NetworkError')) {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+        }
+        
+        addMessage('ai', `⚠️ Error: ${errorMessage}`);
+        showToast(errorMessage, 'error');
     } finally {
         resetSendButton();
     }
@@ -817,7 +847,49 @@ function addMessage(sender, content, images = []) {
 
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
-    messageContent.innerHTML = content;
+
+    // Add text content
+    const textContent = document.createElement('div');
+    textContent.className = 'text-content';
+    if (sender === 'ai') {
+        textContent.innerHTML = formatMessage(content);
+    } else {
+        textContent.textContent = content;
+    }
+    messageContent.appendChild(textContent);
+
+    // Add images if present
+    if (images && images.length > 0) {
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'image-container';
+
+        images.forEach(image => {
+            if (image && image.url) {  // Check if image and URL exist
+                const img = document.createElement('img');
+                img.src = image.url;
+                img.alt = 'Uploaded image';
+                img.className = 'message-image';
+                img.onclick = () => {
+                    // Create modal for image preview
+                    const modal = document.createElement('div');
+                    modal.className = 'image-modal';
+                    modal.onclick = () => modal.remove();
+
+                    const modalImg = document.createElement('img');
+                    modalImg.src = image.url;
+                    modalImg.className = 'modal-content';
+
+                    modal.appendChild(modalImg);
+                    document.body.appendChild(modal);
+                };
+                imageContainer.appendChild(img);
+            }
+        });
+
+        if (imageContainer.children.length > 0) {
+            messageContent.appendChild(imageContainer);
+        }
+    }
 
     messageDiv.appendChild(avatar);
     messageDiv.appendChild(messageContent);

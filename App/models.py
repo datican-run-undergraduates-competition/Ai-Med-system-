@@ -103,3 +103,12 @@ class MedicationRecommendation(models.Model):
 
     def __str__(self):
         return f"{self.medication_name} for {self.user.username} - {self.timestamp}"
+
+class ChatImage(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    image = models.ImageField(upload_to='chat_images/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    chat_history = models.ForeignKey('GeminiChatHistory', on_delete=models.CASCADE, null=True, blank=True)
+    
+    def __str__(self):
+        return f"Image uploaded by {self.user.username} at {self.uploaded_at}"

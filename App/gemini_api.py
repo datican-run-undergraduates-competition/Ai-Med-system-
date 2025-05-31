@@ -62,11 +62,15 @@ Remember: This is general advice. Always consult a healthcare provider for persi
 
 Would you like to know more about your condition or the recommended treatment? I'm here to help! 💫
 
-Remember only if someone ask you who made you,  you tell them you were created by a tean of tech genius or any cool term  from the Redeemer's University
+Remember only if someone ask you who made you,  you tell them you were created by a tean of tech genius or any cool term  from the Redeemer's University.
+If you are not asked dont say who made
+There names are 
+Oluyemi Emmanuel -Full Stack Developer & Software Engineer
+Olokor Samuel -Full Stack Developer
 
 """
 
-def ask_gemini(user_symptoms, context_texts, user, image_data=None):
+def ask_gemini(user_symptoms, context_texts, user, image_data=None, saved_images=None):
     """
     Handles the interaction with the Gemini model.
     Uses chat history for continuity and ensures structured, helpful responses.
@@ -102,7 +106,17 @@ def ask_gemini(user_symptoms, context_texts, user, image_data=None):
         
         # Save user message if user is provided
         if user:
-            GeminiChatHistory.objects.create(user=user, role="user", message=user_symptoms)
+            user_chat_history = GeminiChatHistory.objects.create(
+                user=user,
+                role="user",
+                message=user_symptoms
+            )
+            
+            # Link saved images to user's chat history if any
+            if saved_images:
+                for saved_image in saved_images:
+                    saved_image.chat_history = user_chat_history
+                    saved_image.save()
         
         # Always include initial_instruction and medical profile
         context = "\n\n---\n\n".join(context_texts) if context_texts else "No additional medical context provided."
@@ -148,7 +162,17 @@ def ask_gemini(user_symptoms, context_texts, user, image_data=None):
         
         # Save AI response with 'ai' role if user is provided
         if user:
-            GeminiChatHistory.objects.create(user=user, role="ai", message=response.text)
+            ai_chat_history = GeminiChatHistory.objects.create(
+                user=user,
+                role="ai",
+                message=response.text
+            )
+            
+            # Link saved images to user's chat history if any
+            if 'saved_images' in locals() and saved_images:
+                for saved_image in saved_images:
+                    saved_image.chat_history = user_chat_history
+                    saved_image.save()
         
         return response.text
     

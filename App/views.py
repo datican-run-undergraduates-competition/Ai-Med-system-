@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.models import User, auth
-from .models import GeminiChatHistory, Profile, VoiceNote, MedicationRecommendation
+from .models import GeminiChatHistory, Profile, VoiceNote, MedicationRecommendation, ChatImage
 import json
 from django.http import JsonResponse
 from django.conf import settings
@@ -183,6 +183,8 @@ def process_text_message(request):
 
                 # Process images if present
                 image_data = []
+                saved_images = []  # Store references to saved images
+                
                 for image in images:
                     try:
                         # Read image data in binary mode
@@ -235,13 +237,21 @@ def process_text_message(request):
                             'mime_type': image.content_type,
                             'data': image_b64
                         })
-                        print(f"Successfully processed image: {image.name}, type: {image.content_type}, size: {len(image_bytes)} bytes")
+                        
+                        # Save image to database
+                        chat_image = ChatImage.objects.create(
+                            user=request.user,
+                            image=image
+                        )
+                        saved_images.append(chat_image)
+                        
+                        print(f"Successfully processed and saved image: {image.name}, type: {image.content_type}, size: {len(image_bytes)} bytes")
                     except Exception as e:
                         print(f"Error processing image: {str(e)}")
                         continue
 
                 # Ask Gemini with both text and images
-                answer = ask_gemini(user_symptoms, context_texts, request.user, image_data)
+                answer = ask_gemini(user_symptoms, context_texts, request.user, image_data, saved_images)
 
                 # Extract and save medication recommendations if present
                 if "Recommended Medication" in answer:
@@ -260,26 +270,27 @@ def process_text_message(request):
                                 dosage = line.split("Dosage:")[1].strip()
                                 break
                         
-                        # Find the AI response object just saved
-                        ai_response_obj = GeminiChatHistory.objects.filter(user=request.user, role='ai').order_by('-timestamp').first()
-                        
-                        if ai_response_obj:
-                            # Create medication recommendation
-                            MedicationRecommendation.objects.create(
-                                user=request.user,
-                                medication_name=medication_name,
-                                dosage=dosage,
-                                frequency="",  # You might want to add more sophisticated parsing
-                                duration="",   # You might want to add more sophisticated parsing
-                                warnings="",   # You might want to add more sophisticated parsing
-                                contraindications="",  # You might want to add more sophisticated parsing
-                                chat_history=ai_response_obj # Link to the AI message
-                            )
+                        # Create medication recommendation
+                        MedicationRecommendation.objects.create(
+                            user=request.user,
+                            medication_name=medication_name,
+                            dosage=dosage,
+                            frequency="",  # You might want to add more sophisticated parsing
+                            duration="",   # You might want to add more sophisticated parsing
+                            warnings="",   # You might want to add more sophisticated parsing
+                            contraindications="",  # You might want to add more sophisticated parsing
+                            chat_history=GeminiChatHistory.objects.filter(user=request.user, role="ai").latest('timestamp')
+                        )
                     except Exception as e:
                         print(f"Error saving medication recommendation: {str(e)}")
 
+                # Return response with proper image URLs
                 return JsonResponse({
                     'answer': answer,
+                    'images': [{
+                        'url': request.build_absolute_uri(img.image.url) if img.image else None,
+                        'id': img.id
+                    } for img in saved_images if img.image]
                 })
             except requests.exceptions.Timeout:
                 return JsonResponse({
