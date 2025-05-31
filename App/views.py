@@ -103,7 +103,11 @@ def get_chat_history(request):
             'voice_note': {
                 'url': msg.voice_note.audio_file.url,
                 'transcribed_text': msg.voice_note.transcribed_text
-            } if msg.voice_note else None
+            } if msg.voice_note else None,
+            'images': [{
+                'url': request.build_absolute_uri(img.image.url),
+                'id': img.id
+            } for img in ChatImage.objects.filter(chat_history=msg)]
         }
         for msg in chat_history
     ]

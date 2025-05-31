@@ -781,9 +781,13 @@ header .subtitle {
     padding: 1rem;
     margin-bottom: 1rem;
     box-shadow: 0 2px 5px var(--chat-shadow);
-    position: relative;
-    z-index: 10;
-    width: 100%;
+    position: fixed;
+    bottom: 180px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: calc(100% - 2rem);
+    max-width: 800px;
     max-height: 300px;
     display: flex;
     flex-direction: column;
@@ -795,6 +799,7 @@ header .subtitle {
     align-items: center;
     margin-bottom: 0.75rem;
     flex-shrink: 0;
+    padding: 0 0.5rem;
 }
 
 .review-header h4 {
@@ -816,6 +821,8 @@ header .subtitle {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    min-width: 32px;
+    min-height: 32px;
 }
 
 .cancel-review:hover {
@@ -853,6 +860,7 @@ header .subtitle {
     gap: 0.5rem;
     flex-shrink: 0;
     margin-top: auto;
+    padding: 0 0.5rem;
 }
 
 .send-transcription {
@@ -869,19 +877,30 @@ header .subtitle {
     font-size: 0.9rem;
     font-weight: 500;
     white-space: nowrap;
+    min-width: 100px;
+    justify-content: center;
 }
 
-.send-transcription:hover {
-    background: var(--chat-secondary);
-    transform: translateY(-1px);
-}
+/* Mobile-specific styles */
+@media screen and (max-width: 768px) {
+    .transcription-review {
+        bottom: 120px;
+        padding: 0.75rem;
+        width: calc(100% - 1rem);
+    }
 
-.send-transcription:active {
-    transform: translateY(0);
-}
+    .review-header {
+        padding: 0;
+    }
 
-.send-transcription i {
-    font-size: 0.9rem;
+    .review-actions {
+        padding: 0;
+    }
+
+    .send-transcription {
+        width: 100%;
+        padding: 0.75rem;
+    }
 }
 
 /* Remove voice note player styles */

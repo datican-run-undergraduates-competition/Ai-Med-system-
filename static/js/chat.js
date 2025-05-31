@@ -732,9 +732,12 @@ function loadChatHistory() {
                     chatMessagesContainer.innerHTML = '';
 
                     data.chat_history.forEach(chat => {
-                        // Only display text messages, ignore voice note data
+                        // Get the content and images
                         const content = chat.role === 'ai' ? formatMessage(chat.message) : chat.message;
-                        addMessage(chat.role, content);
+                        const images = chat.images || [];  // Get images from chat history
+                        
+                        // Pass both content and images to addMessage
+                        addMessage(chat.role, content, images);
                     });
 
                     // Force scroll to bottom after loading messages
