@@ -16,6 +16,7 @@ from pydub.utils import make_chunks
 import io
 import tempfile
 import requests
+import base64
 
 from .search_chunks import search_textbook
 from .gemini_api import ask_gemini
@@ -163,18 +164,35 @@ def process_text_message(request):
     """API endpoint to process text messages and return medical advice"""
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            user_symptoms = data.get('symptoms', '').strip()
+            # Handle both JSON and form data
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+                user_symptoms = data.get('symptoms', '').strip()
+                images = []  # No images in JSON request
+            else:
+                # Handle multipart form data
+                user_symptoms = request.POST.get('symptoms', '').strip()
+                images = request.FILES.getlist('images', [])
             
-            if not user_symptoms:
-                return JsonResponse({'error': 'No symptoms provided.'}, status=400)
+            if not user_symptoms and not images:
+                return JsonResponse({'error': 'No symptoms or images provided.'}, status=400)
 
             try:
                 # Search your custom medical knowledge
                 context_texts = search_textbook(user_symptoms)
 
-                # Ask Gemini without profile information
-                answer = ask_gemini(user_symptoms, context_texts, request.user)
+                # Process images if present
+                image_data = []
+                for image in images:
+                    # Convert image to base64 for Gemini
+                    image_bytes = image.read()
+                    image_data.append({
+                        'mime_type': image.content_type,
+                        'data': base64.b64encode(image_bytes).decode('utf-8')
+                    })
+
+                # Ask Gemini with both text and images
+                answer = ask_gemini(user_symptoms, context_texts, request.user, image_data)
 
                 # Extract and save medication recommendations if present
                 if "Recommended Medication" in answer:

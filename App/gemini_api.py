@@ -67,7 +67,7 @@ Oluyemi Emmanuel - A fullstack developer and Software Engineer &
 Olokor Samuel - A fullstack developer
 """
 
-def ask_gemini(user_symptoms, context_texts, user):
+def ask_gemini(user_symptoms, context_texts, user, image_data=None):
     """
     Handles the interaction with the Gemini model.
     Uses chat history for continuity and ensures structured, helpful responses.
@@ -107,9 +107,27 @@ def ask_gemini(user_symptoms, context_texts, user):
         
         # Always include initial_instruction and medical profile
         context = "\n\n---\n\n".join(context_texts) if context_texts else "No additional medical context provided."
-        full_prompt = f"{initial_instruction}\n\n{medical_profile}\n\nTextbook Information:\n{context}\n\nUser Question: {user_symptoms}"
         
-        response = chat.send_message(full_prompt)
+        # Prepare the prompt with or without images
+        if image_data:
+            # Create a multipart message with both text and images
+            parts = []
+            
+            # Add text parts
+            parts.append(f"{initial_instruction}\n\n{medical_profile}\n\nTextbook Information:\n{context}\n\nUser Question: {user_symptoms}")
+            
+            # Add image parts
+            for img in image_data:
+                parts.append({
+                    "mime_type": img['mime_type'],
+                    "data": img['data']
+                })
+            
+            response = chat.send_message(parts)
+        else:
+            # Text-only message
+            full_prompt = f"{initial_instruction}\n\n{medical_profile}\n\nTextbook Information:\n{context}\n\nUser Question: {user_symptoms}"
+            response = chat.send_message(full_prompt)
         
         # Save AI response with 'ai' role if user is provided
         if user:

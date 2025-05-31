@@ -385,10 +385,16 @@ async function sendMessage(text) {
     try {
         console.log('Sending message:', text);
         
-        // Create the request data
-        const requestData = {
-            symptoms: text
-        };
+        // Create FormData for multipart/form-data
+        const formData = new FormData();
+        formData.append('symptoms', text);
+        
+        // Add images if present
+        if (selectedImages.length > 0) {
+            selectedImages.forEach((file, index) => {
+                formData.append('images', file);
+            });
+        }
 
         // Show loading state
         sendIcon.className = 'fas fa-spinner fa-spin';
@@ -398,10 +404,9 @@ async function sendMessage(text) {
         const response = await fetch('/process-text-message/', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRFToken': csrftoken
             },
-            body: JSON.stringify(requestData)
+            body: formData
         });
         
         if (!response.ok) {
@@ -413,7 +418,7 @@ async function sendMessage(text) {
         console.log('Response received:', data);
         
         // Display messages
-        addMessage('user', text);
+        addMessage('user', text, selectedImages);
         if (data.answer) {
             addMessage('ai', formatMessage(data.answer));
         } else if (data.error) {
@@ -791,7 +796,7 @@ function formatMessage(text) {
 }
 
 // Add message to chat UI
-function addMessage(sender, content) {
+function addMessage(sender, content, images = []) {
     const messageDiv = document.createElement('div');
     messageDiv.className = sender === 'user' ? 'user-message' : 'ai-message';
 
