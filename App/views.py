@@ -96,14 +96,21 @@ def get_chat_history(request):
     
     data = [
         {
-            'role': 'user' if msg.role == 'user' else 'ai',  # Convert 'model' to 'ai' for frontend
+            'role': 'user' if msg.role == 'user' else 'ai',
             'message': msg.message,
-            'timestamp': msg.timestamp.strftime('%Y-%m-%d %H:%M')
+            'timestamp': msg.timestamp.strftime('%Y-%m-%d %H:%M'),
+            'voice_note': {
+                'url': msg.voice_note.audio_file.url,
+                'transcribed_text': msg.voice_note.transcribed_text
+            } if msg.voice_note else None
         }
         for msg in chat_history
     ]
     
-    return JsonResponse({'chat_history': data})
+    return JsonResponse({
+        'chat_history': data,
+        'total_messages': len(data)
+    })
 
 @login_required(login_url='login')
 def chat_history(request):
@@ -115,108 +122,120 @@ def diagnose(request):
     """API endpoint to process user symptoms and return medical advice"""
     if request.method == 'POST':
         try:
-            # Handle JSON data
+            # Handle JSON data (assume text input)
             if request.content_type == 'application/json':
                 data = json.loads(request.body)
-                user_symptoms = data.get('symptoms', '').strip()
-                voice_note = None
-            # Handle form data
+                # This part will be moved to a new view or handled differently
+                # For now, we return an error as this view will only handle voice notes or be removed
+                return JsonResponse({'error': 'This endpoint is for voice note transcription only.'}, status=400)
+
+            # Handle form data with voice note
             elif 'voice_note' in request.FILES:
                 voice_note = request.FILES['voice_note']
                 if not voice_note.name.endswith('.wav'):
                     return JsonResponse({'error': 'Only WAV files are supported for voice notes.'}, status=400)
                 try:
-                    user_symptoms = convert_voice_to_text(voice_note)
-                    if not user_symptoms:
+                    transcribed_text = convert_voice_to_text(voice_note)
+                    if not transcribed_text:
                         return JsonResponse({'error': 'Could not convert voice note to text. Please try again.'}, status=400)
+                    
+                    # Return only the transcribed text for frontend review
+                    return JsonResponse({'transcribed_text': transcribed_text})
+
                 except Exception as e:
                     print(f"Error converting voice note: {str(e)}")
                     return JsonResponse({'error': 'Error processing voice note. Please try again.'}, status=500)
             else:
-                user_symptoms = request.POST.get('symptoms', '').strip()
-                voice_note = None
+                 return JsonResponse({'error': 'No voice note file provided.'}, status=400)
 
-            if not user_symptoms:
-                return JsonResponse({'error': 'No symptoms provided.'}, status=400)
-
-            # Save voice note if present
-            voice_note_obj = None
-            if voice_note:
-                voice_note_obj = VoiceNote.objects.create(
-                    user=request.user,
-                    audio_file=voice_note,
-                    transcribed_text=user_symptoms
-                )
-
-            # Search your custom medical knowledge
-            context_texts = search_textbook(user_symptoms)
-
-            # Ask Gemini without profile information
-            answer = ask_gemini(user_symptoms, context_texts, None)  # Pass None instead of request.user
-
-            # Save chat history - only create one pair of entries
-            chat_history = GeminiChatHistory.objects.create(
-                user=request.user,
-                role='user',
-                message=user_symptoms,
-                voice_note=voice_note_obj
-            )
-
-            # Save AI response
-            ai_response = GeminiChatHistory.objects.create(
-                user=request.user,
-                role='ai',
-                message=answer
-            )
-
-            # Extract and save medication recommendations if present
-            if "Recommended Medication" in answer:
-                try:
-                    # Split the answer to get the medication section
-                    med_section = answer.split("Recommended Medication")[1].split("\n\n")[0]
-                    
-                    # Extract medication details
-                    lines = med_section.split("\n")
-                    medication_name = lines[0].strip()
-                    
-                    # Extract dosage if present
-                    dosage = ""
-                    for line in lines:
-                        if "Dosage:" in line:
-                            dosage = line.split("Dosage:")[1].strip()
-                            break
-                    
-                    # Create medication recommendation
-                    MedicationRecommendation.objects.create(
-                        user=request.user,
-                        medication_name=medication_name,
-                        dosage=dosage,
-                        frequency="",  # You might want to add more sophisticated parsing
-                        duration="",   # You might want to add more sophisticated parsing
-                        warnings="",   # You might want to add more sophisticated parsing
-                        contraindications="",  # You might want to add more sophisticated parsing
-                        chat_history=ai_response
-                    )
-                except Exception as e:
-                    print(f"Error saving medication recommendation: {str(e)}")
-
-            response_data = {
-                'answer': answer,
-            }
-            
-            if voice_note_obj:
-                response_data['voice_note'] = {
-                    'url': voice_note_obj.audio_file.url,
-                    'transcribed_text': voice_note_obj.transcribed_text
-                }
-
-            return JsonResponse(response_data)
-        
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON data.'}, status=400)
         except Exception as e:
             import traceback
             print("Error in diagnose view:", e)
+            print(traceback.format_exc())
+            return JsonResponse({'error': f'An error occurred: {str(e)}'}, status=500)
+
+    return JsonResponse({'error': 'Only POST requests are accepted.'}, status=405)
+
+@csrf_exempt
+def process_text_message(request):
+    """API endpoint to process text messages and return medical advice"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            user_symptoms = data.get('symptoms', '').strip()
+            
+            if not user_symptoms:
+                return JsonResponse({'error': 'No symptoms provided.'}, status=400)
+
+            try:
+                # Search your custom medical knowledge
+                context_texts = search_textbook(user_symptoms)
+
+                # Ask Gemini without profile information
+                answer = ask_gemini(user_symptoms, context_texts, request.user)
+
+                # Extract and save medication recommendations if present
+                if "Recommended Medication" in answer:
+                    try:
+                        # Split the answer to get the medication section
+                        med_section = answer.split("Recommended Medication")[1].split("\n\n")[0]
+                        
+                        # Extract medication details
+                        lines = med_section.split("\n")
+                        medication_name = lines[0].strip()
+                        
+                        # Extract dosage if present
+                        dosage = ""
+                        for line in lines:
+                            if "Dosage:" in line:
+                                dosage = line.split("Dosage:")[1].strip()
+                                break
+                        
+                        # Find the AI response object just saved
+                        ai_response_obj = GeminiChatHistory.objects.filter(user=request.user, role='ai').order_by('-timestamp').first()
+                        
+                        if ai_response_obj:
+                            # Create medication recommendation
+                            MedicationRecommendation.objects.create(
+                                user=request.user,
+                                medication_name=medication_name,
+                                dosage=dosage,
+                                frequency="",  # You might want to add more sophisticated parsing
+                                duration="",   # You might want to add more sophisticated parsing
+                                warnings="",   # You might want to add more sophisticated parsing
+                                contraindications="",  # You might want to add more sophisticated parsing
+                                chat_history=ai_response_obj # Link to the AI message
+                            )
+                    except Exception as e:
+                        print(f"Error saving medication recommendation: {str(e)}")
+
+                return JsonResponse({
+                    'answer': answer,
+                })
+            except requests.exceptions.Timeout:
+                return JsonResponse({
+                    'error': 'The request to the AI service timed out. Please check your internet connection and try again.',
+                    'status': 'timeout'
+                }, status=504)
+            except requests.exceptions.ConnectionError:
+                return JsonResponse({
+                    'error': 'Unable to connect to the AI service. Please check your internet connection and try again.',
+                    'status': 'connection_error'
+                }, status=503)
+            except Exception as e:
+                return JsonResponse({
+                    'error': 'An error occurred while processing your request. Please try again.',
+                    'status': 'error',
+                    'details': str(e)
+                }, status=500)
+        
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data.'}, status=400)
+        except Exception as e:
+            import traceback
+            print("Error in process_text_message view:", e)
             print(traceback.format_exc())
             return JsonResponse({'error': f'An error occurred: {str(e)}'}, status=500)
 

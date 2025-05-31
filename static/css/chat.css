@@ -79,9 +79,12 @@ header .subtitle {
     padding: 1rem;
     height: calc(100% - 180px);
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    position: relative;
+    z-index: 1;
 }
 
 /* Welcome message styling */
@@ -106,44 +109,25 @@ header .subtitle {
 }
 
 .message-content {
-    font-size: 1em;
+    background: var(--ai-message-bg);
+    padding: 1.25rem;
+    border-radius: 1rem;
+    border-top-left-radius: 0;
+    color: var(--chat-text);
+    box-shadow: 0 2px 5px var(--chat-shadow);
+    animation: pulseGlow 2s infinite alternate;
+    word-spacing: 4px;
+    letter-spacing: 1px;
     line-height: 1.5;
-    word-wrap: break-word;
-    color: var(--chat-text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
 }
 
-.message-content strong {
-    font-weight: bold;
-    color: var(--chat-text);
+.message-content p {
+    margin-bottom: 1rem;
+    line-height: 1.6;
 }
 
-.message-content em {
-    font-style: italic;
-    color: var(--chat-text);
-}
-
-.message-content ul {
-    list-style-type: none;
-    padding-left: 1em;
-    margin: 0.5em 0;
-}
-
-.message-content li {
-    margin: 0.3em 0;
-    position: relative;
-    color: var(--chat-text);
-}
-
-.message-content li:before {
-    content: "•";
-    color: var(--chat-primary);
-    font-weight: bold;
-    position: absolute;
-    left: -1em;
+.message-content p:last-child {
+    margin-bottom: 0;
 }
 
 .suggestion-text {
@@ -177,30 +161,49 @@ header .subtitle {
     transform: translateY(-2px);
 }
 
-.emoji {
-    display: inline-block;
-    font-size: 1.2em;
-    line-height: 1;
-    vertical-align: middle;
-    margin: 0 2px;
-    color: inherit;
-    font-family: "Segoe UI Emoji", "Segoe UI Symbol", "Apple Color Emoji", "Noto Color Emoji", "Android Emoji", "EmojiOne Color", "EmojiOne", "Twemoji Mozilla", "Noto Emoji", sans-serif;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+/* Message bubbles */
+.message {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    animation: fadeInUp 0.3s ease-out forwards;
+    position: relative;
+    z-index: 1;
 }
 
-/* Ensure emojis in headers are properly sized */
-.message-content strong .emoji {
-    font-size: 1.3em;
+.message.ai {
+    align-self: flex-start;
+    max-width: 80%;
 }
 
-/* Style for bullet points with emojis */
-.message-content li .emoji {
-    margin-right: 0.3em;
+.message.user {
+    flex-direction: row-reverse;
+    align-self: flex-end;
+    max-width: 80%;
 }
 
-/* Message bubble specific styles */
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    background: var(--chat-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1rem;
+}
+
+.message-bubble {
+    padding: 1rem;
+    border-radius: 1rem;
+    max-width: 100%;
+    box-shadow: 0 2px 5px var(--chat-shadow);
+    position: relative;
+    z-index: 1;
+}
+
 .message.ai .message-bubble {
     background: var(--ai-message-bg);
     border-top-left-radius: 0;
@@ -210,15 +213,7 @@ header .subtitle {
 .message.user .message-bubble {
     background: var(--user-message-bg);
     border-top-right-radius: 0;
-    color: var(--chat-text);
-}
-
-/* Ensure text color in user messages is readable */
-.message.user .message-content,
-.message.user .message-content strong,
-.message.user .message-content em,
-.message.user .message-content li {
-    color: var(--chat-text);
+    color: white;
 }
 
 .message-time {
@@ -238,7 +233,8 @@ header .subtitle {
     position: relative;
     gap: 1rem;
     width: 100%;
-    height: 180px;
+    min-height: 180px;
+    height: auto;
 }
 
 .input-area {
@@ -599,7 +595,8 @@ header .subtitle {
         font-size: 1.2rem;
     }
 
-    .chat-interface, .chat-history {
+    .chat-interface,
+    .chat-history {
         margin: 0 1rem;
     }
 
@@ -773,61 +770,133 @@ header .subtitle {
     background: rgba(220, 38, 38, 0.8);
 }
 
-/* Voice note message styles */
-.voice-note {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    background: var(--chat-primary);
-    border-radius: 8px;
-    margin: 5px 0;
+/* Transcription Review Area */
+.transcription-review {
+    background: var(--chat-card-bg);
+    border: 1px solid var(--chat-border);
+    border-radius: 1rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 5px var(--chat-shadow);
+    position: relative;
+    z-index: 10;
     width: 100%;
-    color: white;
-}
-
-.voice-note-player {
-    flex: 1;
-    height: 36px;
-    display: block !important;
-    width: 100%;
-}
-
-.voice-note-player::-webkit-media-controls-panel {
-    background-color: var(--chat-primary);
-}
-
-.voice-note-player::-webkit-media-controls-play-button {
-    background-color: white;
-    border-radius: 50%;
-    color: var(--chat-primary);
-}
-
-.play-button {
-    background: white;
-    color: var(--chat-primary);
-    border: none;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
+    max-height: 300px;
     display: flex;
+    flex-direction: column;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: background-color 0.2s;
+    margin-bottom: 0.75rem;
     flex-shrink: 0;
 }
 
-.play-button:hover {
-    background: var(--chat-secondary);
-    color: white;
+.review-header h4 {
+    color: var(--chat-text);
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
 }
 
-.transcribed-text {
-    margin: 5px 0;
-    font-size: 0.9em;
+.cancel-review {
+    background: transparent;
+    border: none;
     color: var(--chat-light-text);
-    font-style: italic;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.cancel-review:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--chat-text);
+}
+
+.transcription-text {
+    width: 100%;
+    min-height: 80px;
+    max-height: 150px;
+    padding: 0.75rem;
+    border: 1px solid var(--chat-border);
+    border-radius: 0.5rem;
+    background: var(--chat-card-bg);
+    color: var(--chat-text);
+    font-size: 1rem;
+    line-height: 1.5;
+    resize: vertical;
+    margin-bottom: 0.75rem;
+    font-family: inherit;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.transcription-text:focus {
+    outline: none;
+    border-color: var(--chat-primary);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.review-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    margin-top: auto;
+}
+
+.send-transcription {
+    background: var(--chat-primary);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.send-transcription:hover {
+    background: var(--chat-secondary);
+    transform: translateY(-1px);
+}
+
+.send-transcription:active {
+    transform: translateY(0);
+}
+
+.send-transcription i {
+    font-size: 0.9rem;
+}
+
+/* Remove voice note player styles */
+.voice-note,
+.voice-note-player,
+.voice-note-player audio,
+.voice-note-player::-webkit-media-controls-panel,
+.voice-note-player::-webkit-media-controls-play-button,
+.voice-note-player::-webkit-media-controls-current-time-display,
+.voice-note-player::-webkit-media-controls-time-remaining-display,
+.voice-note-player::-webkit-media-controls-timeline,
+.voice-note-player::-webkit-media-controls-mute-button,
+.voice-note-player::-webkit-media-controls-volume-slider,
+.voice-note-player::-moz-range-track,
+.voice-note-player::-moz-range-thumb,
+.voice-note-player::-ms-fill-lower,
+.voice-note-player::-ms-fill-upper {
+    display: none !important;
 }
 
 /* Add these styles to your chat.css */
@@ -844,4 +913,60 @@ header .subtitle {
     max-height: 200px;
     border-radius: 0.5rem;
     object-fit: cover;
+}
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    padding: 12px 24px;
+    border-radius: 4px;
+    color: white;
+    font-size: 14px;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    min-width: 250px;
+    max-width: 350px;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast-error {
+    background-color: #dc3545;
+}
+
+.toast-info {
+    background-color: #17a2b8;
+}
+
+.toast-success {
+    background-color: #28a745;
+}
+
+.toast-warning {
+    background-color: #ffc107;
+    color: #000;
+}
+
+/* Error message styling in chat */
+.message.ai.error {
+    background-color: #fff3f3;
+    border-left: 4px solid #dc3545;
+}
+
+.message.ai.error .message-content {
+    color: #dc3545;
 }

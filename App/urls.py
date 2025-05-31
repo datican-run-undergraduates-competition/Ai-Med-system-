@@ -13,6 +13,7 @@ urlpatterns = [
     path('settings/', views.settings, name='settings'),
     path('diagnose/', views.diagnose, name='diagnose'),
     path('get-chat-history/', views.get_chat_history, name='get_chat_history'),
+    path('process-text-message/', views.process_text_message, name='process_text_message'),
      
     
     # Forgot Password URLS

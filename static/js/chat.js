@@ -281,12 +281,111 @@ function addImagePreview(src, file) {
     console.log('Image preview added, total images:', selectedImages.length);
 }
 
+async function sendVoiceNote(audioBlob) {
+    try {
+        console.log('Original audio blob:', {
+            type: audioBlob.type,
+            size: audioBlob.size
+        });
+
+        // Convert audio blob to WAV format if needed
+        const wavBlob = audioBlob.type === 'audio/wav' ? audioBlob : await convertToWav(audioBlob);
+        console.log('Converted WAV blob:', {
+            type: wavBlob.type,
+            size: wavBlob.size
+        });
+        
+        const formData = new FormData();
+        formData.append('voice_note', wavBlob, 'voice_note.wav');
+        
+        // Show loading state
+        const sendIcon = document.querySelector('.send-button i');
+        const sendButton = document.querySelector('.send-button');
+        if (sendIcon) sendIcon.className = 'fas fa-spinner fa-spin';
+        if (sendButton) sendButton.disabled = true;
+        
+        console.log('Sending voice note to server for transcription...');
+        const response = await fetch('/diagnose/', {
+            method: 'POST',
+            body: formData
+        });
+        
+        console.log('Server response status:', response.status);
+        const responseText = await response.text();
+        console.log('Server response text:', responseText);
+        
+        if (!response.ok) {
+            let errorMessage;
+            try {
+                const errorData = JSON.parse(responseText);
+                errorMessage = errorData.error || 'Network response was not ok';
+            } catch (e) {
+                errorMessage = `Server error: ${response.status} ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
+        }
+        
+        const data = JSON.parse(responseText);
+        console.log('Parsed response data:', data);
+        
+        // Create review area for transcribed text
+        const reviewArea = document.createElement('div');
+        reviewArea.className = 'transcription-review';
+        reviewArea.innerHTML = `
+            <div class="review-header">
+                <h4>Review Transcription</h4>
+                <button class="cancel-review" title="Cancel">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <textarea class="transcription-text" rows="3">${data.transcribed_text}</textarea>
+            <div class="review-actions">
+                <button class="send-transcription" title="Send">
+                    <i class="fas fa-paper-plane"></i> Send
+                </button>
+            </div>
+        `;
+        
+        // Hide input area and show review area
+        const inputArea = document.querySelector('.input-area');
+        const chatInputContainer = document.querySelector('.chat-input-container');
+        if (inputArea) inputArea.style.display = 'none';
+        if (chatInputContainer) chatInputContainer.insertBefore(reviewArea, inputArea);
+        
+        // Add event listeners for review area
+        const cancelButton = reviewArea.querySelector('.cancel-review');
+        const sendTranscriptionButton = reviewArea.querySelector('.send-transcription');
+        const transcriptionText = reviewArea.querySelector('.transcription-text');
+        
+        cancelButton.addEventListener('click', () => {
+            reviewArea.remove();
+            if (inputArea) inputArea.style.display = 'flex';
+            resetSendButton();
+        });
+        
+        sendTranscriptionButton.addEventListener('click', async () => {
+            const text = transcriptionText.value.trim();
+            if (text) {
+                reviewArea.remove();
+                if (inputArea) inputArea.style.display = 'flex';
+                await sendMessage(text);
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error in sendVoiceNote:', error);
+        addMessage('ai', `⚠️ Error: ${error.message}`);
+    } finally {
+        resetSendButton();
+    }
+}
+
 async function sendMessage(text) {
     const sendIcon = sendButton.querySelector('i');
     try {
         console.log('Sending message:', text);
         
-        // Create the request data for views.py
+        // Create the request data
         const requestData = {
             symptoms: text
         };
@@ -295,8 +394,8 @@ async function sendMessage(text) {
         sendIcon.className = 'fas fa-spinner fa-spin';
         sendButton.disabled = true;
         
-        // Send to backend
-        const response = await fetch('/diagnose/', {
+        // Send to backend using the new endpoint
+        const response = await fetch('/process-text-message/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -328,87 +427,28 @@ async function sendMessage(text) {
         }
         selectedImages = [];
         
+        // Ensure scroll to bottom
+        setTimeout(() => {
+            chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        }, 100);
+        
     } catch (error) {
         console.error('Error:', error);
         addMessage('ai', `⚠️ Error: ${error.message}`);
     } finally {
-        // Reset button state
-        sendButton.disabled = false;
-        // Reset icon based on input state
-        if (userInput.value.trim() === '') {
-            sendIcon.className = 'fas fa-microphone';
-            sendButton.title = 'Record voice note';
-        } else {
-            sendIcon.className = 'fas fa-paper-plane';
-            sendButton.title = 'Send message';
-        }
+        resetSendButton();
     }
 }
 
-async function sendVoiceNote(audioBlob) {
-    try {
-        console.log('Original audio blob:', {
-            type: audioBlob.type,
-            size: audioBlob.size
-        });
-
-        // Convert audio blob to WAV format if needed
-        const wavBlob = audioBlob.type === 'audio/wav' ? audioBlob : await convertToWav(audioBlob);
-        console.log('Converted WAV blob:', {
-            type: wavBlob.type,
-            size: wavBlob.size
-        });
-        
-        const formData = new FormData();
-        formData.append('voice_note', wavBlob, 'voice_note.wav');
-        
-        // Show loading state
-        const sendIcon = sendButton.querySelector('i');
-        sendIcon.className = 'fas fa-spinner fa-spin';
-        sendButton.disabled = true;
-        
-        console.log('Sending voice note to server...');
-        const response = await fetch('/diagnose/', {
-            method: 'POST',
-            body: formData
-        });
-        
-        console.log('Server response status:', response.status);
-        const responseText = await response.text();
-        console.log('Server response text:', responseText);
-        
-        if (!response.ok) {
-            let errorMessage;
-            try {
-                const errorData = JSON.parse(responseText);
-                errorMessage = errorData.error || 'Network response was not ok';
-            } catch (e) {
-                errorMessage = `Server error: ${response.status} ${response.statusText}`;
-            }
-            throw new Error(errorMessage);
-        }
-        
-        const data = JSON.parse(responseText);
-        console.log('Parsed response data:', data);
-        
-        // Display voice note in chat
-        if (data.voice_note) {
-            displayVoiceNote(data.voice_note.url, data.voice_note.transcribed_text);
-        } else {
-            displayVoiceNote(URL.createObjectURL(audioBlob));
-        }
-        
-        // Display AI response
-        displayMessage(data.answer, 'ai');
-        
-    } catch (error) {
-        console.error('Error in sendVoiceNote:', error);
-        alert(error.message || 'Error sending voice note. Please try again.');
-    } finally {
-        // Reset button state
-        const sendIcon = sendButton.querySelector('i');
+function resetSendButton() {
+    const sendIcon = sendButton.querySelector('i');
+    sendButton.disabled = false;
+    if (userInput.value.trim() === '') {
         sendIcon.className = 'fas fa-microphone';
-        sendButton.disabled = false;
+        sendButton.title = 'Record voice note';
+    } else {
+        sendIcon.className = 'fas fa-paper-plane';
+        sendButton.title = 'Send message';
     }
 }
 
@@ -649,12 +689,12 @@ function loadChatHistory() {
                     chatMessagesContainer.innerHTML = '';
 
                     data.chat_history.forEach(chat => {
-                        // Apply formatting to AI messages, leave user messages as is
+                        // Only display text messages, ignore voice note data
                         const content = chat.role === 'ai' ? formatMessage(chat.message) : chat.message;
                         addMessage(chat.role, content);
                     });
 
-                    // Scroll to the bottom after loading messages
+                    // Force scroll to bottom after loading messages
                     chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
                 }
             }
@@ -662,6 +702,40 @@ function loadChatHistory() {
         .catch(error => {
             console.error('Error loading chat history:', error);
         });
+}
+
+// Add this function to handle audio element persistence
+function ensureAudioElementVisible(audioElement) {
+    // Force the audio element to be visible
+    audioElement.style.display = 'block';
+    audioElement.style.opacity = '1';
+    audioElement.style.visibility = 'visible';
+    
+    // Add a MutationObserver to watch for changes to the audio element
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && 
+                (mutation.attributeName === 'style' || mutation.attributeName === 'class')) {
+                ensureAudioElementVisible(audioElement);
+            }
+        });
+    });
+    
+    // Start observing the audio element
+    observer.observe(audioElement, {
+        attributes: true,
+        attributeFilter: ['style', 'class']
+    });
+    
+    // Also observe the parent elements
+    let parent = audioElement.parentElement;
+    while (parent) {
+        observer.observe(parent, {
+            attributes: true,
+            attributeFilter: ['style', 'class']
+        });
+        parent = parent.parentElement;
+    }
 }
 
 // Format message with markdown-like syntax
@@ -737,6 +811,48 @@ function addMessage(sender, content) {
 
     chatMessagesContainer.appendChild(messageDiv);
 
-    // Scroll to bottom
+    // Force scroll to bottom after adding message
     chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+}
+
+// Add this to ensure proper scrolling on window resize
+window.addEventListener('resize', () => {
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+});
+
+// Add this to ensure proper scrolling when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+});
+
+// Add toast notification function
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.querySelector('.toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.className = 'toast-container';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    
+    // Add toast to container
+    toastContainer.appendChild(toast);
+    
+    // Show toast
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 100);
+    
+    // Remove toast after 5 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }, 5000);
 } 
