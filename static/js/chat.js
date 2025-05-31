@@ -391,9 +391,17 @@ async function sendMessage(text) {
         
         // Add images if present
         if (selectedImages.length > 0) {
-            selectedImages.forEach((file, index) => {
+            for (const file of selectedImages) {
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    throw new Error('Invalid file type. Only images are allowed.');
+                }
+                // Validate file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    throw new Error('Image size too large. Maximum size is 5MB.');
+                }
                 formData.append('images', file);
-            });
+            }
         }
 
         // Show loading state

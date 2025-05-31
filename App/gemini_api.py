@@ -62,9 +62,8 @@ Remember: This is general advice. Always consult a healthcare provider for persi
 
 Would you like to know more about your condition or the recommended treatment? I'm here to help! 💫
 
-Remember if someone ask you who made you you were created by a tean of tech genius or any cool term  from the Redeemer's University
-Oluyemi Emmanuel - A fullstack developer and Software Engineer &
-Olokor Samuel - A fullstack developer
+Remember only if someone ask you who made you,  you tell them you were created by a tean of tech genius or any cool term  from the Redeemer's University
+
 """
 
 def ask_gemini(user_symptoms, context_texts, user, image_data=None):
@@ -109,21 +108,39 @@ def ask_gemini(user_symptoms, context_texts, user, image_data=None):
         context = "\n\n---\n\n".join(context_texts) if context_texts else "No additional medical context provided."
         
         # Prepare the prompt with or without images
-        if image_data:
-            # Create a multipart message with both text and images
-            parts = []
-            
-            # Add text parts
-            parts.append(f"{initial_instruction}\n\n{medical_profile}\n\nTextbook Information:\n{context}\n\nUser Question: {user_symptoms}")
-            
-            # Add image parts
-            for img in image_data:
-                parts.append({
-                    "mime_type": img['mime_type'],
-                    "data": img['data']
-                })
-            
-            response = chat.send_message(parts)
+        if image_data and len(image_data) > 0:
+            try:
+                # Create message parts
+                parts = []
+                
+                # Add text part first
+                text_prompt = f"{initial_instruction}\n\n{medical_profile}\n\nTextbook Information:\n{context}\n\nUser Question: {user_symptoms}"
+                parts.append({"text": text_prompt})
+                
+                # Add image parts
+                for img in image_data:
+                    try:
+                        # Create image part with proper format for Gemini
+                        image_part = {
+                            "inline_data": {
+                                "mime_type": img['mime_type'],
+                                "data": img['data']
+                            }
+                        }
+                        parts.append(image_part)
+                    except Exception as e:
+                        print(f"Error processing image part: {str(e)}")
+                        continue
+                
+                print(f"Sending message with {len(parts)-1} images")  # -1 because first part is text
+                
+                # Send message with images
+                response = chat.send_message({"parts": parts})
+            except Exception as e:
+                print(f"Error sending message with images: {str(e)}")
+                # Fallback to text-only if image processing fails
+                full_prompt = f"{initial_instruction}\n\n{medical_profile}\n\nTextbook Information:\n{context}\n\nUser Question: {user_symptoms}"
+                response = chat.send_message(full_prompt)
         else:
             # Text-only message
             full_prompt = f"{initial_instruction}\n\n{medical_profile}\n\nTextbook Information:\n{context}\n\nUser Question: {user_symptoms}"

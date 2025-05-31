@@ -184,12 +184,61 @@ def process_text_message(request):
                 # Process images if present
                 image_data = []
                 for image in images:
-                    # Convert image to base64 for Gemini
-                    image_bytes = image.read()
-                    image_data.append({
-                        'mime_type': image.content_type,
-                        'data': base64.b64encode(image_bytes).decode('utf-8')
-                    })
+                    try:
+                        # Read image data in binary mode
+                        image_bytes = image.read()
+                        
+                        # Validate image size (max 5MB)
+                        if len(image_bytes) > 5 * 1024 * 1024:
+                            print(f"Image too large: {len(image_bytes)} bytes")
+                            continue
+                            
+                        # Validate mime type
+                        if not image.content_type.startswith('image/'):
+                            print(f"Invalid mime type: {image.content_type}")
+                            continue
+                            
+                        # Convert GIF to JPEG if needed
+                        if image.content_type == 'image/gif':
+                            try:
+                                from PIL import Image
+                                import io
+                                
+                                # Open the GIF
+                                img = Image.open(io.BytesIO(image_bytes))
+                                
+                                # Convert to RGB (removes alpha channel if present)
+                                if img.mode in ('RGBA', 'LA'):
+                                    background = Image.new('RGB', img.size, (255, 255, 255))
+                                    background.paste(img, mask=img.split()[-1])
+                                    img = background
+                                elif img.mode != 'RGB':
+                                    img = img.convert('RGB')
+                                
+                                # Save as JPEG
+                                jpeg_buffer = io.BytesIO()
+                                img.save(jpeg_buffer, format='JPEG', quality=85)
+                                image_bytes = jpeg_buffer.getvalue()
+                                image.content_type = 'image/jpeg'
+                                
+                                print(f"Converted GIF to JPEG: {len(image_bytes)} bytes")
+                            except Exception as e:
+                                print(f"Error converting GIF to JPEG: {str(e)}")
+                                continue
+                            
+                        # Convert to base64 safely
+                        import base64
+                        image_b64 = base64.b64encode(image_bytes).decode('ascii')
+                        
+                        # Add to image data list
+                        image_data.append({
+                            'mime_type': image.content_type,
+                            'data': image_b64
+                        })
+                        print(f"Successfully processed image: {image.name}, type: {image.content_type}, size: {len(image_bytes)} bytes")
+                    except Exception as e:
+                        print(f"Error processing image: {str(e)}")
+                        continue
 
                 # Ask Gemini with both text and images
                 answer = ask_gemini(user_symptoms, context_texts, request.user, image_data)
@@ -243,6 +292,7 @@ def process_text_message(request):
                     'status': 'connection_error'
                 }, status=503)
             except Exception as e:
+                print(f"Error in Gemini processing: {str(e)}")
                 return JsonResponse({
                     'error': 'An error occurred while processing your request. Please try again.',
                     'status': 'error',
