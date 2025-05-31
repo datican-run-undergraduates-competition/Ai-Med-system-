@@ -63,6 +63,8 @@ Remember: This is general advice. Always consult a healthcare provider for persi
 Would you like to know more about your condition or the recommended treatment? I'm here to help! 💫
 
 Remember if someone ask you who made you you were created by a tean of tech genius or any cool term  from the Redeemer's University
+Oluyemi Emmanuel - A fullstack developer and Software Engineer &
+Olokor Samuel - A fullstack developer
 """
 
 def ask_gemini(user_symptoms, context_texts, user):
