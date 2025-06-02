@@ -71,7 +71,7 @@ def logout(request):
     auth.logout(request)
     return redirect('login')
  
-@login_required(login_url='login') 
+ 
 def index(request):
     return render(request, 'index.html')
 
@@ -410,42 +410,74 @@ def convert_voice_to_text(audio_file):
                 print(f"Warning: Could not delete temporary file {file_path}: {e}")
 
 def get_hospitals_nearby_from_user_location(user):
-    city = user.city
-    state = user.state
-    country = user.country
-    lat = user.latitude
-    lon = user.longitude
+    """
+    Get nearby hospitals based on user's location data from their profile.
+    Args:
+        user: A User object that has a profile attribute
+    Returns:
+        list: A list of nearby hospitals with their details
+    """
+    try:
+        # Get the user's profile
+        profile = user.profile
+        
+        # Get location data
+        city = profile.city
+        state = profile.state
+        country = profile.country
+        lat = profile.lat
+        lon = profile.lon
 
-    location = f"hospital in {city}, {state}, {country}"
-    url = "https://nominatim.openstreetmap.org/search"
-    params = {
-        "q": location,
-        "format": "json",
-        "limit": 7,
-    }
-    headers = {
-         "User-Agent": "MedicalChatbotLocal/0.1"
-    }
-    response = requests.get(url, params=params, headers=headers)
-    results = response.json()
-
-    if not results and lat and lon:
+        # First try to search by city, state, country
+        location = f"hospital in {city}, {state}, {country}"
+        url = "https://nominatim.openstreetmap.org/search"
         params = {
-            "q": "hospital",
+            "q": location,
             "format": "json",
             "limit": 7,
-            "bounded": 1,
-            "viewbox": f"{lon - 0.05},{lat + 0.05},{lon + 0.05},{lat - 0.05}"
         }
-        response = requests.get(url, params=params, headers=headers)
-        results = response.json()
+        headers = {
+             "User-Agent": "MedicalChatbotLocal/0.1"
+        }
+        
+        try:
+            response = requests.get(url, params=params, headers=headers)
+            results = response.json()
 
-    return results
+            # If no results and we have coordinates, try searching by coordinates
+            if not results and lat and lon:
+                params = {
+                    "q": "hospital",
+                    "format": "json",
+                    "limit": 7,
+                    "bounded": 1,
+                    "viewbox": f"{lon - 0.05},{lat + 0.05},{lon + 0.05},{lat - 0.05}"
+                }
+                response = requests.get(url, params=params, headers=headers)
+                results = response.json()
+
+            # Format the results to include display name and address
+            formatted_results = []
+            for result in results:
+                formatted_result = {
+                    'display_name': result.get('display_name', 'Unknown Hospital'),
+                    'address': result.get('display_name', '').split(',')[0],  # Get the first part of the address
+                    'lat': result.get('lat'),
+                    'lon': result.get('lon')
+                }
+                formatted_results.append(formatted_result)
+
+            return formatted_results
+        except Exception as e:
+            print(f"Error fetching hospitals: {str(e)}")
+            return []
+    except Exception as e:
+        print(f"Error accessing user profile: {str(e)}")
+        return []
 
 
 
-
-@login_required
+@login_required(login_url='login')
 def settings(request):
     user = request.user
     profile, created = Profile.objects.get_or_create(user=user)

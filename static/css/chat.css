@@ -887,7 +887,7 @@ header .subtitle {
         bottom: 120px;
         padding: 0.75rem;
         width: calc(100% - 1rem);
-    }
+}
 
     .review-header {
         padding: 0;
@@ -895,7 +895,7 @@ header .subtitle {
 
     .review-actions {
         padding: 0;
-    }
+}
 
     .send-transcription {
         width: 100%;

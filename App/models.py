@@ -84,8 +84,8 @@ class Profile(models.Model):
     city =  models.CharField(max_length=50)
     state = models.CharField(max_length=50)
     country = models.CharField(max_length=50)
-    lat = models.IntegerField(default=0)
-    lon = models.IntegerField(default=0)
+    lat = models.FloatField(default=0)
+    lon = models.FloatField(default=0)
     
     def __str__(self):
         return str(self.user)

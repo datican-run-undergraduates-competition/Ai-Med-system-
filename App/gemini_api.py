@@ -26,6 +26,15 @@ Formatting Rules:
 - Use bullet points for lists 
 - Include relevant emojis for each topic
 
+Hospital Query Instructions:
+- When users ask about nearby hospitals, DO NOT generate any hospital information
+- DO NOT mention "system will insert" or similar phrases
+- DO NOT suggest using maps or search engines
+- Simply provide a friendly greeting and wait for the system to add hospital information
+- The system will automatically add nearby hospital information based on the user's profile
+- If no hospital information is provided by the system, then suggest using maps or search engines
+- Example response for hospital queries: "Hello! 👋 Let me help you find nearby hospitals!"
+
 Prescription Format:
 When recommending medications, always include:
 - Exact dosage (e.g., "500mg")
@@ -98,6 +107,12 @@ def ask_gemini(user_symptoms, context_texts, user, image_data=None, saved_images
             - Physical Activity Level: {profile.physical_activity or 'Not specified'}
             """
 
+        # Check if the query is about hospitals
+        hospital_keywords = ['hospital', 'hospitals', 'clinic', 'clinics', 'medical center', 'medical centers', 
+                           'emergency room', 'ER', 'healthcare facility', 'nearby hospital', 'nearest hospital',
+                           'find hospital', 'locate hospital', 'where is hospital', 'emergency care']
+        is_hospital_query = any(keyword in user_symptoms.lower() for keyword in hospital_keywords)
+
         # Get chat history
         chat_history = GeminiChatHistory.objects.filter(user=user).order_by('timestamp') if user else []
         history = [{"role": "model" if m.role == "ai" else m.role, "parts": [m.message]} for m in chat_history]
@@ -160,19 +175,73 @@ def ask_gemini(user_symptoms, context_texts, user, image_data=None, saved_images
             full_prompt = f"{initial_instruction}\n\n{medical_profile}\n\nTextbook Information:\n{context}\n\nUser Question: {user_symptoms}"
             response = chat.send_message(full_prompt)
         
-        # Save AI response with 'ai' role if user is provided
-        if user:
-            ai_chat_history = GeminiChatHistory.objects.create(
-                user=user,
-                role="ai",
-                message=response.text
-            )
-            
-            # Link saved images to user's chat history if any
-            if 'saved_images' in locals() and saved_images:
-                for saved_image in saved_images:
-                    saved_image.chat_history = user_chat_history
-                    saved_image.save()
+        # If this is a hospital query and we have user location data, add nearby hospitals
+        if is_hospital_query and user and hasattr(user, 'profile'):
+            try:
+                from .views import get_hospitals_nearby_from_user_location
+                # Pass the user object directly, not the profile
+                hospitals = get_hospitals_nearby_from_user_location(user)
+                
+                # Get the response text
+                response_text = response.text
+                
+                if hospitals:
+                    hospital_info = "\n\n🏥 **Nearby Hospitals:**\n"
+                    for i, hospital in enumerate(hospitals[:7], 1):  # Show top 7 hospitals
+                        hospital_info += f"• {hospital.get('display_name', 'Unknown Hospital')}\n"
+                        if hospital.get('address'):
+                            hospital_info += f"   📍 {hospital['address']}\n"
+                        hospital_info += "\n"  # Add extra line break between hospitals
+                    
+                    # Check for template responses or system insert messages
+                    if any(phrase in response_text.lower() for phrase in [
+                        "system will insert",
+                        "i won't ask for your location",
+                        "i can suggest some nearby hospitals",
+                        "here's some information about hospitals"
+                    ]):
+                        # Replace the template response with our hospital info
+                        response_text = f"Hello! 👋 I've found some hospitals near you!\n\n{hospital_info}\nRemember: If you're experiencing a medical emergency, please call emergency services immediately! 🚑"
+                    else:
+                        # Append hospital info to existing response
+                        response_text += f"{hospital_info}\nRemember: If you're experiencing a medical emergency, please call emergency services immediately! 🚑"
+                else:
+                    # If no hospitals found, modify the response to suggest using maps
+                    if any(phrase in response_text.lower() for phrase in [
+                        "system will insert",
+                        "i won't ask for your location",
+                        "i can suggest some nearby hospitals",
+                        "here's some information about hospitals"
+                    ]):
+                        response_text = "Hello! 👋 I couldn't find any hospitals in your area. You can try:\n\n• 🗺️ Using Google Maps or Apple Maps\n• 🌐 Searching online for hospitals in your city\n• 📞 Calling your local emergency services\n\nRemember: If you're experiencing a medical emergency, please call emergency services immediately! 🚑"
+                
+                # Create a new response with the modified text
+                response = type('Response', (), {'text': response_text})()
+
+                # Save AI response with 'ai' role if user is provided
+                if user:
+                    ai_chat_history = GeminiChatHistory.objects.create(
+                        user=user,
+                        role="ai",
+                        message=response.text
+                    )
+                    
+                    # Link saved images to user's chat history if any
+                    # Note: Images should ideally be linked to the user's message,
+                    # but if they need to be linked to the AI response for some reason,
+                    # the logic here should be adjusted. Assuming images are linked to user message.
+
+            except Exception as e:
+                print(f"Error getting nearby hospitals: {str(e)}")
+                # If there's an error, modify the response to suggest using maps
+                if any(phrase in response.text.lower() for phrase in [
+                    "system will insert",
+                    "i won't ask for your location",
+                    "i can suggest some nearby hospitals",
+                    "here's some information about hospitals"
+                ]):
+                    response_text = "Hello! 👋 I'm having trouble finding hospitals in your area. You can try:\n\n• 🗺️ Using Google Maps or Apple Maps\n• 🌐 Searching online for hospitals in your city\n• 📞 Calling your local emergency services\n\nRemember: If you're experiencing a medical emergency, please call emergency services immediately! 🚑"
+                    response = type('Response', (), {'text': response_text})()
         
         return response.text
     
