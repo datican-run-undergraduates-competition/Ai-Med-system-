@@ -1,0 +1,230 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dr. Nova - Revolutionizing Healthcare</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'css/index.css' %}" />
+  </head>
+  <body>
+    <nav class="navbar" data-aos="fade-down">
+      <div class="nav-content">
+        <a href="/" class="logo">
+          <i class="fas fa-brain"></i>
+          Dr. Nova
+        </a>
+        <button class="menu-toggle">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="nav-links">
+          <a href="#features" data-aos="fade-down" data-aos-delay="100"
+            >Features</a
+          >
+          <a href="#about" data-aos="fade-down" data-aos-delay="200">About</a>
+          <a href="{% url 'login' %}" data-aos="fade-down" data-aos-delay="300"
+            >Login</a
+          >
+          <button id="themeToggle" class="theme-toggle-btn">
+            <i class="fas fa-moon"></i>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="hero-section">
+      <div class="hero-content">
+        <h1 class="main-title" data-aos="fade-up">Welcome to Dr. Nova</h1>
+        <p class="hero-subtitle" data-aos="fade-up" data-aos-delay="100">
+          Revolutionizing Healthcare with Artificial Intelligence. Experience
+          the future of medical diagnosis and patient care.
+        </p>
+        <div class="cta-buttons" data-aos="fade-up" data-aos-delay="200">
+          <a href="{% url 'login' %}" class="btn btn-primary">Get Started</a>
+          <a href="#features" class="btn btn-secondary">Learn More</a>
+        </div>
+      </div>
+      <div class="hero-image" data-aos="fade-left" data-aos-delay="300">
+        <i class="fas fa-brain"></i>
+      </div>
+    </div>
+
+    <section id="features" class="features-section">
+      <h2 class="section-title" data-aos="fade-up">Why Choose Dr. Nova?</h2>
+      <div class="features-grid">
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
+          <div class="feature-icon">
+            <i class="fas fa-robot"></i>
+          </div>
+          <h3>AI-Powered Diagnosis</h3>
+          <p>
+            Advanced artificial intelligence algorithms assist medical
+            professionals in making accurate diagnoses and treatment decisions.
+          </p>
+        </div>
+
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
+          <div class="feature-icon">
+            <i class="fas fa-user-md"></i>
+          </div>
+          <h3>Expert Medical Team</h3>
+          <p>
+            Access to a network of qualified healthcare professionals and
+            specialists for comprehensive patient care.
+          </p>
+        </div>
+
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
+          <div class="feature-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h3>Real-time Analytics</h3>
+          <p>
+            Advanced analytics and insights to track patient progress and
+            improve treatment outcomes.
+          </p>
+        </div>
+
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="400">
+          <div class="feature-icon">
+            <i class="fas fa-camera"></i>
+          </div>
+          <h3>Image Analysis</h3>
+          <p>
+            Upload medical images for instant AI analysis and symptom detection.
+            Get quick insights from X-rays, MRIs, and more.
+          </p>
+        </div>
+
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="500">
+          <div class="feature-icon">
+            <i class="fas fa-microphone"></i>
+          </div>
+          <h3>Voice Chat Assistant</h3>
+          <p>
+            Interact with our AI assistant through voice commands for hands-free
+            medical consultations and information.
+          </p>
+        </div>
+
+        <div class="feature-card" data-aos="fade-up" data-aos-delay="600">
+          <div class="feature-icon">
+            <i class="fas fa-hospital"></i>
+          </div>
+          <h3>Hospital Recommendations</h3>
+          <p>
+            Get personalized hospital and specialist recommendations based on
+            your medical needs and location.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta-section" data-aos="fade-up">
+      <div class="cta-content">
+        <h2 data-aos="fade-up">
+          Ready to Experience the Future of Healthcare?
+        </h2>
+        <p data-aos="fade-up" data-aos-delay="100">
+          Join thousands of healthcare professionals and patients already using
+          AI Medical
+        </p>
+        <a
+          href="{% url 'login' %}"
+          class="btn btn-primary"
+          data-aos="fade-up"
+          data-aos-delay="200"
+        >
+          Get Started Now
+        </a>
+      </div>
+    </section>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script>
+      AOS.init({
+        duration: 1000,
+        once: true,
+        offset: 100,
+        easing: "ease-in-out",
+      });
+
+      // Add smooth scrolling for anchor links
+      document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+        anchor.addEventListener("click", function (e) {
+          e.preventDefault();
+          document.querySelector(this.getAttribute("href")).scrollIntoView({
+            behavior: "smooth",
+          });
+        });
+      });
+
+      // Add parallax effect to hero section
+      window.addEventListener("scroll", function () {
+        const heroSection = document.querySelector(".hero-section");
+        const scrolled = window.pageYOffset;
+        heroSection.style.backgroundPositionY = scrolled * 0.5 + "px";
+      });
+
+      // Theme toggle functionality
+      const themeToggle = document.getElementById("themeToggle");
+      const body = document.body;
+      const icon = themeToggle.querySelector("i");
+
+      // Check for saved theme preference
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") {
+        body.classList.add("dark-theme");
+        icon.classList.remove("fa-moon");
+        icon.classList.add("fa-sun");
+      }
+
+      themeToggle.addEventListener("click", () => {
+        body.classList.toggle("dark-theme");
+        if (body.classList.contains("dark-theme")) {
+          icon.classList.remove("fa-moon");
+          icon.classList.add("fa-sun");
+          localStorage.setItem("theme", "dark");
+        } else {
+          icon.classList.remove("fa-sun");
+          icon.classList.add("fa-moon");
+          localStorage.setItem("theme", "light");
+        }
+      });
+
+      // Mobile menu functionality
+      const menuToggle = document.querySelector(".menu-toggle");
+      const navLinks = document.querySelector(".nav-links");
+      const menuIcon = menuToggle.querySelector("i");
+
+      menuToggle.addEventListener("click", () => {
+        navLinks.classList.toggle("active");
+        menuIcon.classList.toggle("fa-bars");
+        menuIcon.classList.toggle("fa-times");
+      });
+
+      // Close menu when clicking outside
+      document.addEventListener("click", (e) => {
+        if (!navLinks.contains(e.target) && !menuToggle.contains(e.target)) {
+          navLinks.classList.remove("active");
+          menuIcon.classList.add("fa-bars");
+          menuIcon.classList.remove("fa-times");
+        }
+      });
+
+      // Close menu when clicking a link
+      document.querySelectorAll(".nav-links a").forEach((link) => {
+        link.addEventListener("click", () => {
+          navLinks.classList.remove("active");
+          menuIcon.classList.add("fa-bars");
+          menuIcon.classList.remove("fa-times");
+        });
+      });
+    </script>
+  </body>
+</html>

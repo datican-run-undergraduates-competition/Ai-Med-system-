@@ -38,6 +38,11 @@
     </div>
   </div>
 
+
+  {% for chat_history in chat_history %}
+
+
+
   <div class="chat-history-list">
     <!-- Chat history entries -->
     <div class="chat-entry">
@@ -47,18 +52,20 @@
         </div>
         <div class="chat-entry-text">
           <div class="chat-entry-title">Cardiac symptoms discussion</div>
-          <div class="chat-entry-preview">We discussed chest pain, shortness of breath, and when to seek emergency...</div>
+          <div class="chat-entry-preview">{{chat_history.message|truncatewords:10}}</div>
         </div>
       </div>
       <div class="chat-actions">
-        <div class="chat-entry-time">Today at 14:32</div>
+        <div class="chat-entry-time">{{chat_history.timestamp}}</div>
         <button class="continue-chat-btn">
           <i class="fas fa-reply"></i> Continue
         </button>
       </div>
     </div>
 
-    <div class="chat-entry">
+    {% endfor %}
+
+    <!-- <div class="chat-entry">
       <div class="chat-entry-info">
         <div class="chat-entry-icon">
           <i class="fas fa-virus"></i>
@@ -129,13 +136,13 @@
         </button>
       </div>
     </div>
-  </div>
+  </div> -->
 
- 
+
 </section>
 {% endblock %}
 
- 
+
 
 {% block extra_scripts %}
 <script>

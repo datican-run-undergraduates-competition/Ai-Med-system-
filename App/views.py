@@ -119,7 +119,12 @@ def get_chat_history(request):
 
 @login_required(login_url='login')
 def chat_history(request):
-    return render(request, 'chatHistory.html')
+    user_obj = request.user 
+    chat_history = GeminiChatHistory.objects.filter(user=user_obj, role = 'user').order_by('timestamp')[:7]
+    context= {
+        'chat_history':chat_history
+    }
+    return render(request, 'chatHistory.html', context)
 
 
 @csrf_exempt
