@@ -32,6 +32,10 @@
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}" />
     <link rel="stylesheet" href="{% static 'css/notifications.css' %}" />
     <link rel="stylesheet" href="{% static 'css/settings.css' %}" />
+    <link
+      rel="stylesheet"
+      href="{% static 'css/professional-contacts.css' %}"
+    />
     <link rel="stylesheet" href="{% static 'font-awesome3/css/all.css' %}" />
     <!-- AOS Animation Library -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
@@ -92,6 +96,12 @@
               </a>
             </li>
             <li>
+              <a href="#" id="professionalContactsBtn">
+                <i class="fas fa-user-md"></i>
+                <span>Chat with a Professional</span>
+              </a>
+            </li>
+            <li>
               <a href="#" id="themeToggle" class="theme-toggle">
                 <i class="fas fa-moon"></i>
                 <span>Toggle mode</span>
@@ -126,6 +136,57 @@
       <main class="main-content">{% block content %}{% endblock %}</main>
     </div>
 
+    <!-- Professional Contacts Modal -->
+    <div id="professionalContactsModal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Contact a Professional</h2>
+        <div class="contacts-grid">
+          <div class="contact-card" data-whatsapp="+2348072846035">
+            <img src="{% static 'images/doctor1.jpg' %}" alt="Dr. Emmanuel" />
+            <h3>Dr. Emmanuel</h3>
+            <p>Medical Doctor</p>
+            <p>Experience: 15 years</p>
+            <button class="contact-btn">Contact via WhatsApp</button>
+          </div>
+
+          <div class="contact-card" data-whatsapp="+2348110888279">
+            <img src="{% static 'images/doctor2.jpg' %}" alt="Dr. Tega" />
+            <h3>Dr. Tega</h3>
+            <p>Nutitionist</p>
+            <p>Experience: 12 years</p>
+            <button class="contact-btn">Contact via WhatsApp</button>
+          </div>
+
+          <div class="contact-card" data-whatsapp="+2349026364759">
+            <img src="{% static 'images/doctor3.jpg' %}" alt="Dr. Hannah" />
+            <h3>Dr. Hannah</h3>
+            <p>Dermatologist</p>
+            <p>Experience: 10 years</p>
+            <button class="contact-btn">Contact via WhatsApp</button>
+          </div>
+
+          <div class="contact-card" data-whatsapp="+2340956783170">
+            <img
+              src="{% static 'images/doctor4.jpg' %}"
+              alt="Dr. James Wilson"
+            />
+            <h3>Dr. James Wilson</h3>
+            <p>Neurologist</p>
+            <p>Experience: 18 years</p>
+            <button class="contact-btn">Contact via WhatsApp</button>
+          </div>
+          <div class="contact-card" data-whatsapp="+2347058842412">
+            <img src="{% static 'images/doctor5.jpg' %}" alt="Dr. James" />
+            <h3>Dr. James</h3>
+            <p>Psycologist</p>
+            <p>Experience: 8 years</p>
+            <button class="contact-btn">Contact via WhatsApp</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="{% static 'js/notifications.js' %}"></script>
@@ -133,6 +194,7 @@
     <script src="{% static 'js/chat.js' %}"></script>
     <script src="{% static 'js/chatHistory.js' %}"></script>
     <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/professional-contacts.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
 
