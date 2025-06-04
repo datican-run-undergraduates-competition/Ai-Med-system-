@@ -3,9 +3,9 @@ import os
 from dotenv import load_dotenv
 from .models import GeminiChatHistory, Profile 
 
-load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
  
-genai.configure(api_key="AIzaSyDiFqUa10wIgRLDflTcT4m5Z7KnVKXcSm8")
+genai.configure(api_key=api_key)
 
 model = genai.GenerativeModel("gemini-2.0-flash")
  
