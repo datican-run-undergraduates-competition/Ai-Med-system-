@@ -7,7 +7,4 @@ google-generativeai
 pillow
 xhtml2pdf
 
-rm -rf ~/.virtualenvs/env
-python3.9 -m venv ~/.virtualenvs/env
-source ~/.virtualenvs/env/bin/activate
-pip install -r requirements.txt
+
