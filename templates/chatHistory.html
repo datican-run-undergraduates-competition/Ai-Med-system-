@@ -1,13 +1,11 @@
-{% extends 'base.html' %}
-{% block title %}Chat History{% endblock %}
-{% block content %}
+{% extends 'base.html' %} 
+{% load static %} 
+{% block title %}Chat History{% endblock %} {% block content %}
 <header>
   <button class="mobile-toggle" id="mobileToggle">
     <i class="fas fa-bars"></i>
   </button>
-  <h1>
-    Chat History
-  </h1>
+  <h1>Chat History</h1>
   <p class="subtitle">
     Review and continue your previous medical conversations
   </p>
@@ -16,7 +14,11 @@
 <section class="chat-history-page">
   <div class="history-filters">
     <div class="search-container">
-      <input type="text" id="chat-search" placeholder="Search conversations...">
+      <input
+        type="text"
+        id="chat-search"
+        placeholder="Search conversations..."
+      />
       <button class="search-button">
         <i class="fas fa-search"></i>
       </button>
@@ -35,16 +37,15 @@
         <option value="lifestyle">Lifestyle</option>
         <option value="medication">Medication</option>
       </select>
+      <button id="generateReportBtn" class="generate-report-btn">
+        <i class="fas fa-file-medical"></i>
+        Generate Report
+      </button>
     </div>
   </div>
 
-
   {% for chat_history in chat_history %}
-
-
-
   <div class="chat-history-list">
-    <!-- Chat history entries -->
     <div class="chat-entry">
       <div class="chat-entry-info">
         <div class="chat-entry-icon">
@@ -52,7 +53,9 @@
         </div>
         <div class="chat-entry-text">
           <div class="chat-entry-title">Cardiac symptoms discussion</div>
-          <div class="chat-entry-preview">{{chat_history.message|truncatewords:10}}</div>
+          <div class="chat-entry-preview">
+            {{chat_history.message|truncatewords:10}}
+          </div>
         </div>
       </div>
       <div class="chat-actions">
@@ -62,89 +65,262 @@
         </button>
       </div>
     </div>
-
-    {% endfor %}
-
-    <!-- <div class="chat-entry">
-      <div class="chat-entry-info">
-        <div class="chat-entry-icon">
-          <i class="fas fa-virus"></i>
-        </div>
-        <div class="chat-entry-text">
-          <div class="chat-entry-title">Fever and flu symptoms</div>
-          <div class="chat-entry-preview">Discussed flu vs. common cold symptoms and appropriate home remedies...</div>
-        </div>
-      </div>
-      <div class="chat-actions">
-        <div class="chat-entry-time">Yesterday at 09:15</div>
-        <button class="continue-chat-btn">
-          <i class="fas fa-reply"></i> Continue
-        </button>
-      </div>
-    </div>
-
-    <div class="chat-entry">
-      <div class="chat-entry-info">
-        <div class="chat-entry-icon">
-          <i class="fas fa-apple-alt"></i>
-        </div>
-        <div class="chat-entry-text">
-          <div class="chat-entry-title">Nutrition advice for diabetes</div>
-          <div class="chat-entry-preview">Review of diabetic diet recommendations including glycemic index...</div>
-        </div>
-      </div>
-      <div class="chat-actions">
-        <div class="chat-entry-time">Apr 7, 2025</div>
-        <button class="continue-chat-btn">
-          <i class="fas fa-reply"></i> Continue
-        </button>
-      </div>
-    </div>
-
-    <div class="chat-entry">
-      <div class="chat-entry-info">
-        <div class="chat-entry-icon">
-          <i class="fas fa-running"></i>
-        </div>
-        <div class="chat-entry-text">
-          <div class="chat-entry-title">Exercise for joint health</div>
-          <div class="chat-entry-preview">Low-impact exercise recommendations for arthritis and joint pain...</div>
-        </div>
-      </div>
-      <div class="chat-actions">
-        <div class="chat-entry-time">Apr 5, 2025</div>
-        <button class="continue-chat-btn">
-          <i class="fas fa-reply"></i> Continue
-        </button>
-      </div>
-    </div>
-
-    <div class="chat-entry">
-      <div class="chat-entry-info">
-        <div class="chat-entry-icon">
-          <i class="fas fa-pills"></i>
-        </div>
-        <div class="chat-entry-text">
-          <div class="chat-entry-title">Medication side effects</div>
-          <div class="chat-entry-preview">Discussion about common side effects of blood pressure medications...</div>
-        </div>
-      </div>
-      <div class="chat-actions">
-        <div class="chat-entry-time">Apr 2, 2025</div>
-        <button class="continue-chat-btn">
-          <i class="fas fa-reply"></i> Continue
-        </button>
-      </div>
-    </div>
-  </div> -->
-
-
+  </div>
+  {% endfor %}
 </section>
-{% endblock %}
 
+<!-- Report Generation Modal -->
+<div id="reportModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal">&times;</span>
+    <h2>Generate Medical Report</h2>
+    <div class="report-options">
+      <div class="date-range">
+        <label for="startDate">Start Date:</label>
+        <input type="date" id="startDate" name="startDate" />
 
-
-{% block extra_scripts %}
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate" name="endDate" />
+      </div>
+      <div class="report-type">
+        <label>Report Type:</label>
+        <select id="reportType">
+          <option value="summary">Summary Report</option>
+          <option value="detailed">Detailed Report</option>
+          <option value="symptoms">Symptoms Analysis</option>
+        </select>
+      </div>
+    </div>
+    <div class="report-actions">
+      <button id="generateReport" class="primary-btn">
+        <i class="fas fa-file-medical"></i> Generate Report
+      </button>
+      <button id="downloadReport" class="secondary-btn" style="display: none">
+        <i class="fas fa-download"></i> Download PDF
+      </button>
+    </div>
+    <div id="reportPreview" class="report-preview"></div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
 <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Get CSRF token from cookie
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === name + "=") {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // Get modal elements
+    const reportModal = document.getElementById("reportModal");
+    const generateReportBtn = document.getElementById("generateReportBtn");
+    const closeModal = document.querySelector(".close-modal");
+    const generateReport = document.getElementById("generateReport");
+    const downloadReport = document.getElementById("downloadReport");
+    const reportPreview = document.getElementById("reportPreview");
+
+    // Set default dates
+    const today = new Date();
+    const lastMonth = new Date();
+    lastMonth.setMonth(today.getMonth() - 1);
+
+    document.getElementById("startDate").value = lastMonth
+      .toISOString()
+      .split("T")[0];
+    document.getElementById("endDate").value = today
+      .toISOString()
+      .split("T")[0];
+
+    // Open modal
+    generateReportBtn.addEventListener("click", function () {
+      reportModal.style.display = "block";
+      document.body.style.overflow = "hidden";
+    });
+
+    // Close modal
+    closeModal.addEventListener("click", function () {
+      reportModal.style.display = "none";
+      document.body.style.overflow = "auto";
+      // Reset the preview and hide download button
+      reportPreview.innerHTML = "";
+      downloadReport.style.display = "none";
+    });
+
+    // Close modal when clicking outside
+    window.addEventListener("click", function (e) {
+      if (e.target === reportModal) {
+        reportModal.style.display = "none";
+        document.body.style.overflow = "auto";
+        // Reset the preview and hide download button
+        reportPreview.innerHTML = "";
+        downloadReport.style.display = "none";
+      }
+    });
+
+    // Generate report
+    generateReport.addEventListener("click", async function () {
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      const reportType = document.getElementById("reportType").value;
+
+      if (!startDate || !endDate) {
+        alert("Please select both start and end dates");
+        return;
+      }
+
+      // Show loading state
+      generateReport.disabled = true;
+      generateReport.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Generating...';
+      reportPreview.innerHTML =
+        '<div class="loading">Generating report...</div>';
+      downloadReport.style.display = "none";
+
+      try {
+        const response = await fetch("/generate_report/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+          body: JSON.stringify({
+            start_date: startDate,
+            end_date: endDate,
+            report_type: reportType,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        reportPreview.innerHTML = data.report_html;
+
+        // Show download button and store download URL
+        downloadReport.style.display = "inline-block";
+        downloadReport.onclick = function () {
+          window.location.href = data.download_url;
+        };
+      } catch (error) {
+        console.error("Error generating report:", error);
+        reportPreview.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+        downloadReport.style.display = "none";
+      } finally {
+        // Reset button state
+        generateReport.disabled = false;
+        generateReport.innerHTML =
+          '<i class="fas fa-file-medical"></i> Generate Report';
+      }
+    });
+  });
 </script>
+
+<style>
+  .loading {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-color);
+  }
+
+  .error {
+    color: #dc3545;
+    padding: 20px;
+    text-align: center;
+    background-color: rgba(220, 53, 69, 0.1);
+    border-radius: 4px;
+    margin: 10px 0;
+  }
+
+  .report-actions {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+  }
+
+  .primary-btn,
+  .secondary-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    border: none;
+  }
+
+  .primary-btn {
+    background-color: var(--primary-color);
+    color: white;
+  }
+
+  .primary-btn:hover {
+    background-color: var(--primary-color-dark);
+  }
+
+  .primary-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+
+  .secondary-btn {
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+  }
+
+  .secondary-btn:hover {
+    background-color: var(--secondary-color-dark);
+  }
+
+  .report-preview {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .report-preview h3 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+  }
+
+  .report-preview ul {
+    list-style-type: none;
+    padding: 0;
+  }
+
+  .report-preview li {
+    margin-bottom: 8px;
+    padding-left: 20px;
+    position: relative;
+  }
+
+  .report-preview li:before {
+    content: "•";
+    color: var(--primary-color);
+    position: absolute;
+    left: 0;
+  }
+</style>
 {% endblock %}

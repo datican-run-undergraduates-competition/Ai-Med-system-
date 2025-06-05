@@ -4,22 +4,27 @@ from django.contrib import messages
 from django.contrib.auth.models import User, auth
 from .models import GeminiChatHistory, Profile, VoiceNote, MedicationRecommendation, ChatImage
 import json
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.conf import settings
 import os
+import tempfile
 from django.views.decorators.csrf import csrf_exempt
-
+from django.views.decorators.http import require_http_methods
+from datetime import datetime
+from django.utils import timezone
+from io import BytesIO
+import bleach
+import re
+from html import escape
 import speech_recognition as sr
 from pydub import AudioSegment
 from pydub.utils import make_chunks
-
-import io
-import tempfile
 import requests
 import base64
-
 from .search_chunks import search_textbook
 from .gemini_api import ask_gemini
+from xhtml2pdf import pisa
+from django.template.loader import get_template
 
 def register(request):
     if request.method == 'POST':
@@ -574,5 +579,466 @@ def settings(request):
         ],
     }
     return render(request, 'settings.html', context)
+
+@login_required
+@require_http_methods(["POST"])
+def generate_report(request):
+    try:
+        data = json.loads(request.body)
+        start_date = datetime.strptime(data['start_date'], '%Y-%m-%d')
+        end_date = datetime.strptime(data['end_date'], '%Y-%m-%d')
+        report_type = data['report_type']
+
+        # Get all chats within the date range
+        chats = GeminiChatHistory.objects.filter(
+            user=request.user,
+            timestamp__range=[start_date, end_date]
+        ).order_by('timestamp')
+
+        # Prepare chat history for Gemini
+        chat_history = []
+        for chat in chats:
+            chat_history.append({
+                'role': chat.role,
+                'message': chat.message,
+                'timestamp': chat.timestamp.strftime('%Y-%m-%d %H:%M')
+            })
+
+        # Create prompt for Gemini based on report type
+        if report_type == 'summary':
+            prompt = f"""Based on the following medical consultation history, generate a comprehensive medical summary report. 
+            Format the response in plain text with clear sections. Include:
+            1. Overview of Consultations
+            2. Key Symptoms Identified
+            3. Main Concerns Discussed
+            4. Recommendations Provided
+            5. Follow-Up Suggestions
+            
+            Chat History:
+            {json.dumps(chat_history, indent=2)}
+            
+            Please provide a clear, well-structured report."""
+            
+        elif report_type == 'detailed':
+            prompt = f"""Generate a detailed medical report from the following consultation history. 
+            Format the response in plain text with clear sections. Include:
+            1. Chronological Timeline
+            2. Symptom Analysis
+            3. Medical Advice
+            4. Treatment Recommendations
+            5. Lifestyle Suggestions
+            
+            Chat History:
+            {json.dumps(chat_history, indent=2)}
+            
+            Please provide a clear, well-structured report."""
+            
+        elif report_type == 'symptoms':
+            prompt = f"""Analyze the following medical consultation history and create a symptoms-focused report. 
+            Format the response in plain text with clear sections. Include:
+            1. Symptom Timeline
+            2. Severity Progression
+            3. Related Symptoms
+            4. Trigger Factors
+            5. Management Recommendations
+            
+            Chat History:
+            {json.dumps(chat_history, indent=2)}
+            
+            Please provide a clear, well-structured report."""
+        else:
+            return JsonResponse({'error': 'Invalid report type'}, status=400)
+
+        # Get response from Gemini
+        try:
+            report_text = ask_gemini(prompt, [], request.user)
+            
+            # Clean the text
+            report_text = report_text.replace('\x00', '')
+            
+            # Clean up emojis and markdown
+            def clean_text(text):
+                # Remove emojis
+                emoji_pattern = re.compile("["
+                    u"\U0001F600-\U0001F64F"  # emoticons
+                    u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                    u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                    u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                    u"\U00002702-\U000027B0"
+                    u"\U000024C2-\U0001F251"
+                    "]+", flags=re.UNICODE)
+                text = emoji_pattern.sub('', text)
+                
+                # Remove HTML tags
+                text = re.sub(r'<[^>]+>', '', text)
+                
+                # Convert markdown to plain text
+                text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # Remove bold
+                text = re.sub(r'\*(.*?)\*', r'\1', text)      # Remove italic
+                text = re.sub(r'\[(.*?)\]', r'\1', text)      # Remove links
+                text = re.sub(r'#+ (.*)', r'\1', text)        # Remove headers
+                text = re.sub(r'`(.*?)`', r'\1', text)        # Remove code blocks
+                
+                # Format numbered sections
+                text = re.sub(r'(\d+\.\s*[A-Za-z\s]+:)', r'\n\1\n', text)  # Add newlines around numbered sections
+                
+                # Format bullet points
+                text = re.sub(r'[•*]\s*', '\n• ', text)  # Add newline before bullet points
+                text = re.sub(r'•\s*•\s*', '    • ', text)  # Format nested bullet points
+                
+                # Add spacing after sections
+                text = re.sub(r'([A-Za-z\s]+:)\n', r'\1\n\n', text)  # Add extra newline after section headers
+                
+                # Remove duplicate sections
+                text = re.sub(r'(Nearby Hospitals:.*?)(?=Nearby Hospitals:)', r'\1', text, flags=re.DOTALL)
+                
+                # Clean up whitespace
+                text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)  # Replace multiple newlines with double newline
+                text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with single space
+                text = text.strip()
+                
+                # Split into sections and format each section
+                sections = text.split('\n\n')
+                formatted_sections = []
+                
+                for section in sections:
+                    if section.strip():
+                        # Format section headers
+                        if section.strip().endswith(':'):
+                            formatted_sections.append(f"\n{section.strip()}\n")
+                        else:
+                            # Format bullet points
+                            lines = section.split('\n')
+                            formatted_lines = []
+                            for line in lines:
+                                if line.strip():
+                                    if line.strip().startswith('•'):
+                                        # Handle nested bullet points
+                                        if '    •' in line:
+                                            formatted_lines.append(f"    {line.strip()}")
+                                        else:
+                                            formatted_lines.append(line.strip())
+                                    else:
+                                        formatted_lines.append(line.strip())
+                            formatted_sections.append('\n'.join(formatted_lines))
+                
+                # Join sections with proper spacing
+                formatted_text = '\n\n'.join(formatted_sections)
+                
+                # Add extra spacing after main sections
+                formatted_text = re.sub(r'(\d+\.\s*[A-Za-z\s]+:.*?)(?=\d+\.\s*[A-Za-z\s]+:|$)', 
+                                       r'\1\n\n', formatted_text, flags=re.DOTALL)
+                
+                return formatted_text
+            
+            # Clean the report text
+            report_text = clean_text(report_text)
+            
+            # Return JSON response with download URL
+            return JsonResponse({
+                'report_html': report_text,
+                'download_url': f'/download_report/?start_date={start_date.strftime("%Y-%m-%d")}&end_date={end_date.strftime("%Y-%m-%d")}&report_type={report_type}'
+            })
+            
+        except Exception as e:
+            print(f"Error generating report: {str(e)}")
+            return JsonResponse({'error': f'Failed to generate report: {str(e)}'}, status=500)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def download_report(request):
+    try:
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+        report_type = request.GET.get('report_type')
+
+        if not all([start_date, end_date, report_type]):
+            return JsonResponse({'error': 'Missing required parameters'}, status=400)
+
+        # Convert string dates to datetime objects
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
+        # Get all chats within the date range
+        chats = GeminiChatHistory.objects.filter(
+            user=request.user,
+            timestamp__range=[start_date, end_date]
+        ).order_by('timestamp')
+
+        # Prepare chat history for Gemini
+        chat_history = []
+        for chat in chats:
+            chat_history.append({
+                'role': chat.role,
+                'message': chat.message,
+                'timestamp': chat.timestamp.strftime('%Y-%m-%d %H:%M')
+            })
+
+        # Create prompt for Gemini based on report type
+        if report_type == 'summary':
+            prompt = f"""Based on the following medical consultation history, generate a comprehensive medical summary report. 
+            Format the response in plain text with clear sections. Include:
+            1. Overview of Consultations
+            2. Key Symptoms Identified
+            3. Main Concerns Discussed
+            4. Recommendations Provided
+            5. Follow-Up Suggestions
+            
+            Chat History:
+            {json.dumps(chat_history, indent=2)}
+            
+            Please provide a clear, well-structured report."""
+            
+        elif report_type == 'detailed':
+            prompt = f"""Generate a detailed medical report from the following consultation history. 
+            Format the response in plain text with clear sections. Include:
+            1. Chronological Timeline
+            2. Symptom Analysis
+            3. Medical Advice
+            4. Treatment Recommendations
+            5. Lifestyle Suggestions
+            
+            Chat History:
+            {json.dumps(chat_history, indent=2)}
+            
+            Please provide a clear, well-structured report."""
+            
+        elif report_type == 'symptoms':
+            prompt = f"""Analyze the following medical consultation history and create a symptoms-focused report. 
+            Format the response in plain text with clear sections. Include:
+            1. Symptom Timeline
+            2. Severity Progression
+            3. Related Symptoms
+            4. Trigger Factors
+            5. Management Recommendations
+            
+            Chat History:
+            {json.dumps(chat_history, indent=2)}
+            
+            Please provide a clear, well-structured report."""
+        else:
+            return JsonResponse({'error': 'Invalid report type'}, status=400)
+
+        # Get response from Gemini
+        try:
+            report_text = ask_gemini(prompt, [], request.user)
+            
+            # Clean the text and remove null bytes
+            report_text = report_text.replace('\x00', '')
+            
+            # Create HTML content with CSS styling
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    @page {{
+                        margin: 2.5cm;
+                        size: letter;
+                    }}
+                    body {{
+                        font-family: Helvetica, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        padding: 20px;
+                    }}
+                    .title {{
+                        text-align: center;
+                        font-size: 24pt;
+                        color: #2c3e50;
+                        margin-bottom: 30px;
+                        font-weight: bold;
+                    }}
+                    .section {{
+                        margin-bottom: 30px;
+                    }}
+                    .section-header {{
+                        font-size: 16pt;
+                        color: #3498db;
+                        border-bottom: 2px solid #3498db;
+                        padding-bottom: 5px;
+                        margin-bottom: 15px;
+                        font-weight: bold;
+                    }}
+                    .bullet-list {{
+                        margin-left: 20px;
+                        margin-bottom: 15px;
+                    }}
+                    .bullet-item {{
+                        margin-bottom: 12px;
+                        position: relative;
+                        padding-left: 20px;
+                    }}
+                    .bullet-item:before {{
+                        content: "•";
+                        position: absolute;
+                        left: 0;
+                        color: #3498db;
+                    }}
+                    .nested-bullet {{
+                        margin-left: 40px;
+                        margin-top: 8px;
+                        margin-bottom: 8px;
+                    }}
+                    .disclaimer {{
+                        text-align: center;
+                        font-style: italic;
+                        color: #666;
+                        margin-top: 40px;
+                        padding: 20px;
+                        border-top: 1px solid #ddd;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="title">Medical Report ({start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')})</div>
+            """
+
+            # Split the report text into sections and format as HTML
+            sections = report_text.split('\n\n')
+            for section in sections:
+                if section.strip():
+                    if section.strip().endswith(':'):
+                        # This is a section header
+                        html_content += f'<div class="section"><div class="section-header">{section.strip()}</div>'
+                    else:
+                        # This is content with bullet points
+                        lines = section.split('\n')
+                        html_content += '<div class="bullet-list">'
+                        for line in lines:
+                            if line.strip():
+                                if line.strip().startswith('•'):
+                                    if '    •' in line:
+                                        # Nested bullet point
+                                        html_content += f'<div class="bullet-item nested-bullet">{line.strip().replace("    •", "").strip()}</div>'
+                                    else:
+                                        # Regular bullet point
+                                        html_content += f'<div class="bullet-item">{line.strip().replace("•", "").strip()}</div>'
+                                else:
+                                    # Regular text
+                                    html_content += f'<div class="bullet-item">{line.strip()}</div>'
+                        html_content += '</div>'
+                    html_content += '</div>'
+
+            # Add disclaimer
+            html_content += """
+                <div class="disclaimer">
+                    Remember: This report is based on the information provided and does not substitute professional medical advice!
+                </div>
+            </body>
+            </html>
+            """
+
+            try:
+                # Create PDF using xhtml2pdf
+                pdf = BytesIO()
+                pisa_status = pisa.CreatePDF(
+                    html_content,
+                    dest=pdf,
+                    encoding='utf-8'
+                )
+                
+                if pisa_status.err:
+                    return JsonResponse({'error': 'Failed to generate PDF'}, status=500)
+                
+                # Get the value of the BytesIO buffer
+                pdf.seek(0)
+                pdf_data = pdf.getvalue()
+                pdf.close()
+                
+                # Create the HTTP response
+                response = HttpResponse(content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="medical_report_{start_date.strftime("%Y-%m-%d")}_to_{end_date.strftime("%Y-%m-%d")}.pdf"'
+                response.write(pdf_data)
+                
+                return response
+            except Exception as e:
+                print(f"Error generating PDF: {str(e)}")
+                return JsonResponse({'error': f'Failed to generate PDF: {str(e)}'}, status=500)
+
+        except Exception as e:
+            print(f"Error in download_report: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500)
+
+    except Exception as e:
+        print(f"Error in download_report: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+def clean_text(text):
+    # Remove emojis
+    emoji_pattern = re.compile("["
+        u"\U0001F600-\U0001F64F"  # emoticons
+        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+        u"\U0001F680-\U0001F6FF"  # transport & map symbols
+        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        u"\U00002702-\U000027B0"
+        u"\U000024C2-\U0001F251"
+        "]+", flags=re.UNICODE)
+    text = emoji_pattern.sub('', text)
+    
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    
+    # Convert markdown to plain text
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # Remove bold
+    text = re.sub(r'\*(.*?)\*', r'\1', text)      # Remove italic
+    text = re.sub(r'\[(.*?)\]', r'\1', text)      # Remove links
+    text = re.sub(r'#+ (.*)', r'\1', text)        # Remove headers
+    text = re.sub(r'`(.*?)`', r'\1', text)        # Remove code blocks
+    
+    # Format numbered sections
+    text = re.sub(r'(\d+\.\s*[A-Za-z\s]+:)', r'\n\1\n', text)  # Add newlines around numbered sections
+    
+    # Format bullet points
+    text = re.sub(r'[•*]\s*', '\n• ', text)  # Add newline before bullet points
+    text = re.sub(r'•\s*•\s*', '    • ', text)  # Format nested bullet points
+    
+    # Add spacing after sections
+    text = re.sub(r'([A-Za-z\s]+:)\n', r'\1\n\n', text)  # Add extra newline after section headers
+    
+    # Remove duplicate sections
+    text = re.sub(r'(Nearby Hospitals:.*?)(?=Nearby Hospitals:)', r'\1', text, flags=re.DOTALL)
+    
+    # Clean up whitespace
+    text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)  # Replace multiple newlines with double newline
+    text = re.sub(r'\s+', ' ', text)  # Replace multiple spaces with single space
+    text = text.strip()
+    
+    # Split into sections and format each section
+    sections = text.split('\n\n')
+    formatted_sections = []
+    
+    for section in sections:
+        if section.strip():
+            # Format section headers
+            if section.strip().endswith(':'):
+                formatted_sections.append(f"\n{section.strip()}\n")
+            else:
+                # Format bullet points
+                lines = section.split('\n')
+                formatted_lines = []
+                for line in lines:
+                    if line.strip():
+                        if line.strip().startswith('•'):
+                            # Handle nested bullet points
+                            if '    •' in line:
+                                formatted_lines.append(f"    {line.strip()}")
+                            else:
+                                formatted_lines.append(line.strip())
+                        else:
+                            formatted_lines.append(line.strip())
+                formatted_sections.append('\n'.join(formatted_lines))
+    
+    # Join sections with proper spacing
+    formatted_text = '\n\n'.join(formatted_sections)
+    
+    # Add extra spacing after main sections
+    formatted_text = re.sub(r'(\d+\.\s*[A-Za-z\s]+:.*?)(?=\d+\.\s*[A-Za-z\s]+:|$)', 
+                           r'\1\n\n', formatted_text, flags=re.DOTALL)
+    
+    return formatted_text
 
  

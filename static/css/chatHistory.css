@@ -329,157 +329,92 @@
     }
 }
 
+/* Chat History Page Container */
 .chat-history-page {
-
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    background-color: var(--bg-color);
     border-radius: 1rem;
-    padding: 1.5rem;
     box-shadow: 0 4px 6px var(--chat-shadow);
-    animation: fadeInUp 0.7s ease-out forwards;
 }
 
+/* Header Styles */
+header {
+    margin-bottom: 2rem;
+    padding: 1rem 0;
+}
+
+header h1 {
+    font-size: 2rem;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+header .subtitle {
+    color: var(--text-color-light);
+    font-size: 1rem;
+}
+
+/* History Filters Container */
 .history-filters {
+    background-color: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px var(--chat-shadow);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--chat-border);
-    flex-wrap: wrap;
     gap: 1rem;
+    flex-wrap: wrap;
 }
 
-.search-container {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    max-width: 500px;
-}
-
-#chat-search {
-    flex: 1;
-    border: 1px solid var(--chat-border);
-    border-radius: 1.5rem 0 0 1.5rem;
-    padding: 0.75rem 1.25rem;
-    font-size: 0.9rem;
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--chat-text);
-    outline: none;
-    transition: all 0.3s ease;
-}
-
-#chat-search:focus {
-    border-color: var(--chat-primary);
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-}
-
-.search-button {
-    width: 42px;
-    height: 42px;
-    background: var(--chat-primary);
-    color: white;
-    border: none;
-    border-radius: 0 1.5rem 1.5rem 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.search-button:hover {
-    background: var(--chat-secondary);
-}
-
-.filter-options {
-    display: flex;
-    gap: 0.75rem;
-}
-
-.filter-options select {
-    padding: 0.65rem 1rem;
-    border-radius: 0.5rem;
-    border: 1px solid var(--chat-border);
-    background: var(--chat-card-bg);
-    color: var(--chat-text);
-    font-size: 0.9rem;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.3s ease;
-}
-
-.filter-options select:focus,
-.filter-options select:hover {
-    border-color: var(--chat-primary);
-}
-
+/* Chat History List Container */
 .chat-history-list {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    margin-top: 1rem;
 }
 
+/* Chat Entry Container */
 .chat-entry {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 1rem;
+    background-color: var(--card-bg);
+    padding: 1.25rem;
     border-radius: 0.75rem;
-    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
     transition: all 0.3s ease;
-    cursor: pointer;
-    border: 1px solid var(--chat-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
 }
 
 .chat-entry:hover {
-    background: rgba(37, 99, 235, 0.05);
     transform: translateY(-2px);
-    box-shadow: 0 3px 8px var(--chat-shadow);
+    box-shadow: 0 4px 12px var(--chat-shadow);
+    border-color: var(--primary-color);
 }
 
-.chat-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.5rem;
-}
-
-.continue-chat-btn {
-    background: var(--chat-primary);
-    color: white;
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 2rem;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.continue-chat-btn:hover {
-    background: var(--chat-secondary);
-    transform: translateY(-2px);
-}
-
-
-
+/* Mobile Responsive Adjustments */
 @media (max-width: 768px) {
-    .history-filters {
-        flex-direction: column;
-        align-items: stretch;
+    .chat-history-page {
+        padding: 1rem;
+        margin: 0;
+        border-radius: 0;
     }
 
-    .search-container {
-        max-width: 100%;
+    .history-filters {
+        flex-direction: column;
+        padding: 1rem;
     }
 
     .filter-options {
         width: 100%;
-    }
-
-    .filter-options select {
-        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
     }
 
     .chat-entry {
@@ -489,10 +424,27 @@
 
     .chat-actions {
         width: 100%;
-        flex-direction: row;
+        display: flex;
         justify-content: space-between;
         align-items: center;
         margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .chat-history-page {
+        background-color: var(--bg-color);
+    }
+
+    .history-filters {
+        background-color: var(--card-bg);
+    }
+
+    .chat-entry {
+        background-color: var(--card-bg);
     }
 }
 
@@ -519,5 +471,210 @@
         width: 327px;
         padding: 0.5rem;
     }
+}
 
+/* Report Generation Button */
+.generate-report-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.generate-report-btn:hover {
+    background-color: var(--primary-color-dark);
+}
+
+.generate-report-btn i {
+    font-size: 16px;
+}
+
+/* Report Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: var(--bg-color);
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 800px;
+    position: relative;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.close-modal {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-color);
+}
+
+.report-options {
+    margin: 20px 0;
+    display: grid;
+    gap: 20px;
+}
+
+.date-range {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.date-range label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-color);
+}
+
+.date-range input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+
+.report-type {
+    margin-top: 15px;
+}
+
+.report-type label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-color);
+}
+
+.report-type select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
+}
+
+/* Report Preview Styles */
+.report-preview {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--card-bg);
+}
+
+.report-summary,
+.report-detailed,
+.report-symptoms {
+    color: var(--text-color);
+}
+
+.report-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.key-findings {
+    margin: 20px 0;
+}
+
+.key-findings h4 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.key-findings ul {
+    list-style: none;
+    padding: 0;
+}
+
+.key-findings li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.consultation-detail {
+    margin: 20px 0;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.consultation-detail h4 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.timeline {
+    margin: 20px 0;
+}
+
+.timeline-entry {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 15px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.timeline-entry .date {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+
+    .date-range {
+        grid-template-columns: 1fr;
+    }
+
+    .timeline-entry {
+        grid-template-columns: 1fr;
+        gap: 5px;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .modal-content {
+        background-color: var(--bg-color);
+    }
+
+    .report-preview {
+        background-color: var(--card-bg);
+    }
+
+    .date-range input,
+    .report-type select {
+        background-color: var(--input-bg);
+        color: var(--text-color);
+    }
 }
