@@ -13,18 +13,14 @@ from django.views.decorators.http import require_http_methods
 from datetime import datetime
 from django.utils import timezone
 from io import BytesIO
-import bleach
 import re
-from html import escape
 import speech_recognition as sr
 from pydub import AudioSegment
 from pydub.utils import make_chunks
 import requests
-import base64
 from .search_chunks import search_textbook
 from .gemini_api import ask_gemini
 from xhtml2pdf import pisa
-from django.template.loader import get_template
 
 def register(request):
     if request.method == 'POST':
